@@ -223,6 +223,30 @@
                         </div>
                     </div>
                     
+                    <!-- User Feedback Section -->
+                    <div id="feedback-section" class="bg-snapchat-gray rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 border-2 border-blue-500 animate-bounce-in">
+                        <h3 class="text-white font-bold mb-3 text-base sm:text-lg flex items-center gap-2">
+                            <span>💬</span>
+                            <span>Was this classification correct?</span>
+                        </h3>
+                        <p class="text-gray-400 text-sm mb-4">Your feedback helps improve the model</p>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button onclick="submitFeedback('correct')" 
+                                    class="flex-1 bg-green-600 hover:bg-green-500 active:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
+                                <span class="text-xl">✅</span>
+                                <span>Correct</span>
+                            </button>
+                            <button onclick="submitFeedback('incorrect')" 
+                                    class="flex-1 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
+                                <span class="text-xl">❌</span>
+                                <span>Incorrect</span>
+                            </button>
+                        </div>
+                        <div id="feedback-thanks" class="hidden mt-4 text-center">
+                            <p class="text-green-400 font-semibold">Thank you for your feedback! 🙏</p>
+                        </div>
+                    </div>
+                    
                     <!-- Probability Breakdown -->
                     <div class="bg-snapchat-gray rounded-2xl p-4 sm:p-6">
                         <h3 class="text-white font-bold mb-3 sm:mb-4 text-base sm:text-lg">Probability Breakdown</h3>
@@ -423,9 +447,11 @@
     <script>
         // Configuration - Use empty string for relative URLs (same domain as frontend)
         const API_URL = '';  // Relative URLs work with ngrok!
+        const CONFIDENCE_THRESHOLD = 0.75; // 75% threshold for unknown classification
         let currentImageFile = null;
         let cameraStream = null;
         let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+        let currentPredictionId = null; // Store current prediction ID for feedback
 
         // Toast Notification System
         function showToast(message, type = 'info') {
@@ -623,18 +649,43 @@
             document.getElementById('results-placeholder').classList.add('hidden');
             document.getElementById('results-content').classList.remove('hidden');
             
-            const classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
-            document.getElementById('result-class').textContent = `${classEmoji} ${data.predicted_class.toUpperCase()}`;
+            // Store prediction ID for feedback
+            currentPredictionId = data.prediction_id || data.filename;
+            
+            // Check confidence threshold for unknown classification
+            let displayClass = data.predicted_class;
+            let classEmoji = '❓';
+            
+            if (data.confidence < CONFIDENCE_THRESHOLD) {
+                displayClass = 'Unknown';
+                classEmoji = '❓';
+            } else {
+                classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
+            }
+            
+            document.getElementById('result-class').textContent = `${classEmoji} ${displayClass.toUpperCase()}`;
             
             const confidence = (data.confidence * 100).toFixed(1);
             document.getElementById('result-confidence').textContent = `${confidence}%`;
             
+            // Change confidence bar color based on threshold
+            const confidenceBar = document.getElementById('confidence-bar');
+            if (data.confidence < CONFIDENCE_THRESHOLD) {
+                confidenceBar.className = 'bg-orange-500 h-full rounded-full transition-all duration-1000 ease-out';
+            } else {
+                confidenceBar.className = 'bg-snapchat-yellow h-full rounded-full transition-all duration-1000 ease-out';
+            }
+            
             setTimeout(() => {
-                document.getElementById('confidence-bar').style.width = `${confidence}%`;
+                confidenceBar.style.width = `${confidence}%`;
             }, 100);
             
             const date = new Date(data.timestamp);
             document.getElementById('result-timestamp').textContent = date.toLocaleString();
+            
+            // Show/reset feedback section
+            document.getElementById('feedback-section').classList.remove('hidden');
+            document.getElementById('feedback-thanks').classList.add('hidden');
             
             const probContainer = document.getElementById('probabilities-container');
             probContainer.innerHTML = '';
@@ -657,9 +708,54 @@
             });
         }
 
+        // User Feedback
+        async function submitFeedback(feedbackType) {
+            if (!currentPredictionId) {
+                showToast('No prediction to provide feedback for', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/feedback`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({
+                        prediction_id: currentPredictionId,
+                        feedback: feedbackType
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('feedback-thanks').classList.remove('hidden');
+                    
+                    // Hide feedback buttons after submission
+                    setTimeout(() => {
+                        document.getElementById('feedback-section').style.opacity = '0.5';
+                        document.getElementById('feedback-section').style.pointerEvents = 'none';
+                    }, 1000);
+                    
+                    showToast('Thank you for your feedback!', 'success');
+                } else {
+                    showToast(data.error || 'Failed to submit feedback', 'error');
+                }
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+                showToast('Failed to submit feedback', 'error');
+            }
+        }
+
         function hideResults() {
             document.getElementById('results-placeholder').classList.remove('hidden');
             document.getElementById('results-content').classList.add('hidden');
+            
+            // Reset feedback section
+            document.getElementById('feedback-section').style.opacity = '1';
+            document.getElementById('feedback-section').style.pointerEvents = 'auto';
         }
 
         // History
@@ -940,38 +1036,64 @@
             const overlay = document.getElementById('live-prediction-overlay');
             const confidence = (data.confidence * 100);
             
-            // Only show if above threshold
-            if (confidence >= confidenceThreshold) {
-                overlay.classList.remove('hidden');
-                
-                const classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
-                const className = data.predicted_class.toLowerCase() === 'robot' ? 'Robot' : 'Human';
-                const color = data.predicted_class.toLowerCase() === 'robot' ? 'border-purple-500' : 'border-blue-500';
-                const bgColor = data.predicted_class.toLowerCase() === 'robot' ? 'bg-purple-500' : 'bg-blue-500';
-                
-                overlay.className = `absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-2xl p-4 border-2 ${color}`;
-                document.getElementById('live-result-class').textContent = `${classEmoji} ${className.toUpperCase()}`;
-                document.getElementById('live-result-class').className = `text-2xl sm:text-3xl font-black ${data.predicted_class.toLowerCase() === 'robot' ? 'text-purple-400' : 'text-blue-400'}`;
-                document.getElementById('live-result-confidence').textContent = `${confidence.toFixed(1)}%`;
-                document.getElementById('live-result-confidence').className = `text-xl sm:text-2xl font-bold ${data.predicted_class.toLowerCase() === 'robot' ? 'text-purple-400' : 'text-blue-400'}`;
-                
-                const confidenceBar = document.getElementById('live-confidence-bar');
-                confidenceBar.style.width = `${confidence}%`;
-                confidenceBar.className = `h-full rounded-full transition-all duration-300 ${bgColor}`;
+            // Show overlay for all predictions (not just above threshold)
+            overlay.classList.remove('hidden');
+            
+            // Check if prediction is below 75% threshold
+            let displayClass = data.predicted_class;
+            let classEmoji = '❓';
+            let color = 'border-orange-500';
+            let bgColor = 'bg-orange-500';
+            let textColor = 'text-orange-400';
+            
+            if (data.confidence >= CONFIDENCE_THRESHOLD) {
+                // High confidence - show normal classification
+                classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
+                displayClass = data.predicted_class.toLowerCase() === 'robot' ? 'Robot' : 'Human';
+                color = data.predicted_class.toLowerCase() === 'robot' ? 'border-purple-500' : 'border-blue-500';
+                bgColor = data.predicted_class.toLowerCase() === 'robot' ? 'bg-purple-500' : 'bg-blue-500';
+                textColor = data.predicted_class.toLowerCase() === 'robot' ? 'text-purple-400' : 'text-blue-400';
             } else {
-                overlay.classList.add('hidden');
+                // Low confidence - show unknown
+                displayClass = 'Unknown';
+                classEmoji = '❓';
+                color = 'border-orange-500';
+                bgColor = 'bg-orange-500';
+                textColor = 'text-orange-400';
             }
+            
+            overlay.className = `absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-2xl p-4 border-2 ${color}`;
+            document.getElementById('live-result-class').textContent = `${classEmoji} ${displayClass.toUpperCase()}`;
+            document.getElementById('live-result-class').className = `text-2xl sm:text-3xl font-black ${textColor}`;
+            document.getElementById('live-result-confidence').textContent = `${confidence.toFixed(1)}%`;
+            document.getElementById('live-result-confidence').className = `text-xl sm:text-2xl font-bold ${textColor}`;
+            
+            const confidenceBar = document.getElementById('live-confidence-bar');
+            confidenceBar.style.width = `${confidence}%`;
+            confidenceBar.className = `h-full rounded-full transition-all duration-300 ${bgColor}`;
         }
 
         function addToDetectionHistory(data) {
             const confidence = (data.confidence * 100);
-            if (confidence < confidenceThreshold) return;
             
-            const classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
+            // Determine display class and emoji based on confidence threshold
+            let displayClass = data.predicted_class;
+            let classEmoji = '❓';
+            
+            if (data.confidence >= CONFIDENCE_THRESHOLD) {
+                // High confidence - show normal classification
+                displayClass = data.predicted_class;
+                classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
+            } else {
+                // Low confidence - show unknown
+                displayClass = 'unknown';
+                classEmoji = '❓';
+            }
+            
             const time = new Date().toLocaleTimeString();
             
             detectionHistory.unshift({
-                class: data.predicted_class,
+                class: displayClass,
                 confidence: confidence,
                 time: time,
                 emoji: classEmoji

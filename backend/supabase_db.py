@@ -140,6 +140,42 @@ class SupabaseDB:
         except Exception as e:
             print(f"Error getting statistics: {e}")
             return {}
+    
+    def update_feedback(self, prediction_id, feedback: str) -> dict:
+        """
+        Update user feedback for a prediction
+        
+        Args:
+            prediction_id: ID of the prediction (can be ID or filename)
+            feedback: User feedback ('correct' or 'incorrect')
+            
+        Returns:
+            Dictionary with the updated data
+        """
+        try:
+            # Try to find by ID first
+            if isinstance(prediction_id, int) or (isinstance(prediction_id, str) and prediction_id.isdigit()):
+                response = self.client.table(SUPABASE_TABLE)\
+                    .update({"user_feedback": feedback})\
+                    .eq("id", int(prediction_id))\
+                    .execute()
+            else:
+                # Try to find by filename
+                response = self.client.table(SUPABASE_TABLE)\
+                    .update({"user_feedback": feedback})\
+                    .eq("filename", prediction_id)\
+                    .execute()
+            
+            if response.data:
+                print(f"✓ Feedback updated for prediction {prediction_id}: {feedback}")
+                return response.data[0]
+            else:
+                print(f"⚠ No prediction found with ID: {prediction_id}")
+                return {}
+                
+        except Exception as e:
+            print(f"Error updating feedback: {e}")
+            raise
 
 
 if __name__ == "__main__":

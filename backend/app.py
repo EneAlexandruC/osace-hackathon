@@ -250,10 +250,18 @@ def predict():
         
         predicted_class = CLASS_NAMES[predicted_class_idx]
         
+        # Apply confidence threshold for unknown classification
+        CONFIDENCE_THRESHOLD = 0.75  # 75%
+        original_class = predicted_class
+        if confidence < CONFIDENCE_THRESHOLD:
+            predicted_class = "unknown"
+        
         # Save file
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_filename = f"{timestamp}_{filename}"
+        
+        prediction_id = None
         
         # Upload to Supabase Storage and save to database
         if db is not None:
@@ -262,8 +270,9 @@ def predict():
                 db.upload_image(image_bytes, unique_filename)
                 print(f"Image uploaded to Supabase Storage: {unique_filename}")
                 
-                # Save prediction to database (without image_url)
-                db.save_prediction(unique_filename, predicted_class, confidence)
+                # Save prediction to database with original class for statistics
+                prediction_result = db.save_prediction(unique_filename, original_class, confidence)
+                prediction_id = prediction_result.get('id') if isinstance(prediction_result, dict) else None
                 
                 # Get image URL from filename
                 image_url = db.get_image_url(unique_filename)
@@ -284,6 +293,7 @@ def predict():
         # Return response
         return jsonify({
             'success': True,
+            'prediction_id': prediction_id,
             'filename': unique_filename,
             'predicted_class': predicted_class,
             'confidence': confidence,
@@ -359,6 +369,11 @@ def predict_live():
         
         predicted_class = CLASS_NAMES[predicted_class_idx]
         
+        # Apply confidence threshold for unknown classification (same as regular predict)
+        CONFIDENCE_THRESHOLD = 0.75  # 75%
+        if confidence < CONFIDENCE_THRESHOLD:
+            predicted_class = "unknown"
+        
         # Return response without saving to database
         return jsonify({
             'success': True,
@@ -417,6 +432,48 @@ def get_statistics():
     except Exception as e:
         return jsonify({
             'error': f'Could not retrieve statistics: {str(e)}'
+        }), 500
+
+
+@app.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """
+    Submit user feedback for a prediction
+    
+    Expected JSON: {
+        'prediction_id': str or int,
+        'feedback': 'correct' or 'incorrect'
+    }
+    """
+    if db is None:
+        return jsonify({'error': 'Database not connected'}), 503
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'prediction_id' not in data or 'feedback' not in data:
+            return jsonify({'error': 'Missing prediction_id or feedback'}), 400
+        
+        prediction_id = data['prediction_id']
+        feedback = data['feedback']
+        
+        if feedback not in ['correct', 'incorrect']:
+            return jsonify({'error': 'Feedback must be "correct" or "incorrect"'}), 400
+        
+        # Update the prediction with user feedback
+        result = db.update_feedback(prediction_id, feedback)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Feedback submitted successfully',
+            'prediction_id': prediction_id,
+            'feedback': feedback
+        })
+        
+    except Exception as e:
+        print(f"Error submitting feedback: {e}")
+        return jsonify({
+            'error': f'Could not submit feedback: {str(e)}'
         }), 500
 
 
