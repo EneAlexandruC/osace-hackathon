@@ -23,9 +23,26 @@ from backend.supabase_db import SupabaseDB
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
-CORS(app)  # Enable CORS for all routes
+
+# Configure CORS with proper headers for ngrok
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "ngrok-skip-browser-warning"]
+    }
+})
+
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Add ngrok-specific headers to all responses
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,ngrok-skip-browser-warning')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    return response
 
 # Global variables
 model = None

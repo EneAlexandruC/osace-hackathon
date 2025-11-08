@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot vs Human Classifier 🤖</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'snapchat-yellow': '#FFFC00',
+                        'snapchat-black': '#000000',
+                        'snapchat-gray': '#1a1a1a',
+                    },
+                    animation: {
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'scale-in': 'scaleIn 0.3s ease-out',
+                        'bounce-in': 'bounceIn 0.5s ease-out',
+                        'shake': 'shake 0.5s ease-in-out',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.9)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        bounceIn: {
+                            '0%': { transform: 'scale(0.3)', opacity: '0' },
+                            '50%': { transform: 'scale(1.05)' },
+                            '70%': { transform: 'scale(0.9)' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-10px)' },
+                            '20%, 40%, 60%, 80%': { transform: 'translateX(10px)' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-snapchat-black min-h-screen">
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-3 max-w-md"></div>
+    
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        
+        <!-- Header -->
+        <header class="text-center mb-12 animate-fade-in">
+            <div class="inline-block mb-6">
+                <h1 class="text-6xl font-black text-snapchat-yellow mb-2 tracking-tight">
+                    🤖 AI Classifier
+                </h1>
+                <div class="h-1 bg-snapchat-yellow rounded-full"></div>
+            </div>
+            <p class="text-white text-xl font-light">
+                Discover if it's <span class="text-snapchat-yellow font-bold">Human</span> or <span class="text-snapchat-yellow font-bold">Robot</span>
+            </p>
+        </header>
+        
+        <!-- Main Grid -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-8">
+            
+            <!-- Upload Section -->
+            <div class="glass rounded-3xl p-8 animate-scale-in">
+                <h2 class="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                    <span>📸</span> Upload Image
+                </h2>
+                
+                <!-- Upload Options -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button onclick="openCameraModal()" 
+                            class="bg-snapchat-yellow hover:bg-yellow-300 text-black font-bold py-6 px-4 rounded-2xl transition-all duration-300 transform hover:scale-105 glow-hover flex flex-col items-center gap-2">
+                        <span class="text-4xl">📷</span>
+                        <span>Use Camera</span>
+                    </button>
+                    
+                    <button onclick="handleFileUploadClick()" 
+                            class="bg-white hover:bg-gray-100 text-black font-bold py-6 px-4 rounded-2xl transition-all duration-300 transform hover:scale-105 flex flex-col items-center gap-2">
+                        <span class="text-4xl">📁</span>
+                        <span>Upload File</span>
+                    </button>
+                </div>
+                
+                <input type="file" id="fileInput" accept="image/*" class="hidden">
+                
+                <!-- Drag & Drop Area -->
+                <div id="dropArea" 
+                     class="border-4 border-dashed border-snapchat-yellow rounded-3xl p-12 text-center transition-all duration-300 hover:bg-white/5 cursor-pointer"
+                     ondrop="handleDrop(event)" 
+                     ondragover="handleDragOver(event)" 
+                     ondragleave="handleDragLeave(event)"
+                     onclick="handleDropAreaClick()">
+                    <div class="text-6xl mb-4">⬆️</div>
+                    <p class="text-white text-xl font-semibold mb-2">Drag & Drop Image Here</p>
+                    <p class="text-gray-400">or click to browse</p>
+                </div>
+                
+                <!-- Preview Area -->
+                <div id="preview-container" class="hidden mt-6">
+                    <div class="relative">
+                        <img id="preview-image" class="w-full rounded-2xl shadow-2xl" alt="Preview">
+                        <button onclick="clearPreview()" 
+                                class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110">
+                            ✕
+                        </button>
+                    </div>
+                    
+                    <button id="classify-btn" 
+                            onclick="classifyImage()" 
+                            class="w-full mt-6 bg-snapchat-yellow hover:bg-yellow-300 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 glow-hover text-lg">
+                        🚀 Classify Image
+                    </button>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="loading-state" class="hidden mt-6 text-center">
+                    <div class="spinner mx-auto mb-4"></div>
+                    <p class="text-white text-lg font-semibold">Analyzing image...</p>
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="glass rounded-3xl p-8 animate-scale-in">
+                <h2 class="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                    <span>🎯</span> Results
+                </h2>
+                
+                <div id="results-placeholder" class="text-center py-12">
+                    <div class="text-6xl mb-4">🔍</div>
+                    <p class="text-gray-400 text-lg">Upload an image to see results</p>
+                </div>
+                
+                <div id="results-content" class="hidden">
+                    <!-- Result Card -->
+                    <div class="bg-snapchat-gray rounded-2xl p-6 mb-6 border-2 border-snapchat-yellow">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-gray-400 font-semibold">Classification:</span>
+                            <span id="result-class" class="text-3xl font-black text-snapchat-yellow"></span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-gray-400">Confidence</span>
+                                <span id="result-confidence" class="text-white font-bold"></span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+                                <div id="confidence-bar" class="bg-snapchat-yellow h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-xs text-gray-500 flex items-center gap-2">
+                            <span>⏱️</span>
+                            <span id="result-timestamp"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Probability Breakdown -->
+                    <div class="bg-snapchat-gray rounded-2xl p-6">
+                        <h3 class="text-white font-bold mb-4 text-lg">Probability Breakdown</h3>
+                        <div id="probabilities-container" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- History Section -->
+        <div class="glass rounded-3xl p-8 animate-slide-up">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+                    <span>📊</span> Classification History
+                </h2>
+                <button onclick="loadHistory()" 
+                        class="bg-snapchat-yellow hover:bg-yellow-300 text-black font-bold py-2 px-6 rounded-xl transition-all duration-300 transform hover:scale-105">
+                    🔄 Refresh
+                </button>
+            </div>
+            
+            <div id="history-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 hidden">
+                <!-- History items will be loaded here -->
+            </div>
+            
+            <div id="history-placeholder" class="text-center py-12">
+                <div class="text-6xl mb-4">📭</div>
+                <p class="text-gray-400 text-lg">No classifications yet</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Camera Modal -->
+    <div id="camera-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div class="bg-snapchat-gray rounded-3xl p-8 max-w-2xl w-full animate-scale-in">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-white">📷 Camera Capture</h3>
+                <button onclick="closeCameraModal()" 
+                        class="text-white hover:text-snapchat-yellow text-3xl transition-colors duration-300">
+                    ✕
+                </button>
+            </div>
+            
+            <div class="relative mb-6">
+                <video id="camera-preview" autoplay playsinline class="w-full rounded-2xl bg-black"></video>
+                <canvas id="camera-canvas" class="hidden"></canvas>
+            </div>
+            
+            <div class="flex gap-4">
+                <button onclick="capturePhoto()" 
+                        class="flex-1 bg-snapchat-yellow hover:bg-yellow-300 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 glow-hover">
+                    📸 Capture Photo
+                </button>
+                <button onclick="closeCameraModal()" 
+                        class="flex-1 bg-white hover:bg-gray-100 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Image Viewer Modal -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4" onclick="closeImageModal()">
+        <div class="max-w-4xl w-full animate-scale-in" onclick="event.stopPropagation()">
+            <div class="flex justify-end mb-4">
+                <button onclick="closeImageModal()" 
+                        class="bg-white hover:bg-gray-100 text-black rounded-full w-12 h-12 flex items-center justify-center text-2xl transition-all duration-300 transform hover:scale-110">
+                    ✕
+                </button>
+            </div>
+            <img id="modal-image" class="w-full rounded-3xl shadow-2xl" alt="Full size">
+        </div>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

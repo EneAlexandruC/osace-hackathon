@@ -1,0 +1,93 @@
+/* AI Classifier - Custom Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #FFFC00;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #e6e300;
+}
+
+/* Glassmorphism Effect */
+.glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Hover Glow Effect */
+.glow-hover:hover {
+    box-shadow: 0 0 20px rgba(255, 252, 0, 0.5);
+}
+
+/* Camera Video Styling */
+#camera-preview {
+    transform: scaleX(-1);
+}
+
+/* Loading Spinner */
+.spinner {
+    border: 3px solid rgba(255, 252, 0, 0.3);
+    border-top: 3px solid #FFFC00;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Drag Over Effect */
+.drag-over {
+    border-color: white !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Pulse Animation */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 252, 0, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 252, 0, 0.8);
+    }
+}
+
+.pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Gradient Text */
+.gradient-text {
+    background: linear-gradient(135deg, #FFFC00 0%, #FFF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Card Hover Effect */
+.card-hover {
+    transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-5px) scale(1.02);
+}

@@ -1,917 +1,614 @@
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robot vs Human Classifier</title>
+    <title>Robot vs Human Classifier 🤖</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'snapchat-yellow': '#FFFC00',
+                        'snapchat-black': '#000000',
+                        'snapchat-gray': '#1a1a1a',
+                    },
+                    animation: {
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'scale-in': 'scaleIn 0.3s ease-out',
+                        'bounce-in': 'bounceIn 0.5s ease-out',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.9)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        bounceIn: {
+                            '0%': { transform: 'scale(0.3)', opacity: '0' },
+                            '50%': { transform: 'scale(1.05)' },
+                            '70%': { transform: 'scale(0.9)' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Inter', sans-serif;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        
+        ::-webkit-scrollbar {
+            width: 8px;
         }
-
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
         }
-
-        .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        
+        ::-webkit-scrollbar-thumb {
+            background: #FFFC00;
+            border-radius: 4px;
         }
-
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+        
+        .glow-hover:hover {
+            box-shadow: 0 0 20px rgba(255, 252, 0, 0.5);
         }
-
-        .card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        
+        #camera-preview {
+            transform: scaleX(-1);
         }
-
-        .card h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 1.8em;
-        }
-
-        .upload-area {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 20px;
-        }
-
-        .upload-area:hover {
-            background: #f8f9ff;
-            border-color: #764ba2;
-        }
-
-        .upload-area.dragover {
-            background: #f0f4ff;
-            border-color: #764ba2;
-            transform: scale(1.02);
-        }
-
-        .upload-icon {
-            font-size: 4em;
-            margin-bottom: 10px;
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            border-radius: 30px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            font-weight: bold;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .upload-options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .upload-option-btn {
-            background: white;
-            border: 2px solid #667eea;
-            color: #667eea;
-            padding: 20px;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1em;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .upload-option-btn:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .upload-option-btn .icon {
-            font-size: 2.5em;
-            display: block;
-            margin-bottom: 10px;
-        }
-
-        #cameraModal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-        }
-
-        #cameraModal.active {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .camera-container {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            max-width: 800px;
-            text-align: center;
-        }
-
-        #cameraVideo {
-            width: 100%;
-            max-width: 640px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        #cameraCanvas {
-            display: none;
-        }
-
-        .camera-controls {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        .preview-container {
-            margin-top: 20px;
-            text-align: center;
-        }
-
-        #imagePreview {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            display: none;
-        }
-
-        .result-container {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8f9ff;
-            border-radius: 10px;
-            display: none;
-        }
-
-        .result-item {
-            margin: 10px 0;
-            font-size: 1.1em;
-        }
-
-        .result-label {
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .confidence-bar {
-            height: 30px;
-            background: #e0e0e0;
-            border-radius: 15px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-
-        .confidence-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            transition: width 0.5s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-        }
-
-        .class-badge {
-            display: inline-block;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 1.3em;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-
-        .class-human {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .class-robot {
-            background: #2196F3;
-            color: white;
-        }
-
-        .statistics {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .stat-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-
-        .history-list {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 20px;
-        }
-
-        .history-item {
-            background: #f8f9ff;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+        
+        .spinner {
+            border: 3px solid rgba(255, 252, 0, 0.3);
+            border-top: 3px solid #FFFC00;
             border-radius: 50%;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
         }
-
+        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        .error {
-            background: #f44336;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            display: none;
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            animation: fadeIn 0.3s;
-        }
-
-        .modal.active {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow: auto;
-            position: relative;
-            animation: slideIn 0.3s;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            font-size: 2em;
-            cursor: pointer;
-            color: #666;
-            transition: color 0.3s;
-        }
-
-        .modal-close:hover {
-            color: #f44336;
-        }
-
-        .modal-image {
-            width: 100%;
-            max-height: 500px;
-            object-fit: contain;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        .modal-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .modal-detail-item {
-            background: #f8f9ff;
-            padding: 15px;
-            border-radius: 10px;
-        }
-
-        .modal-detail-label {
-            font-size: 0.9em;
-            color: #666;
-            margin-bottom: 5px;
-        }
-
-        .modal-detail-value {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .history-item {
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .history-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-
-            .statistics {
-                grid-template-columns: 1fr;
-            }
-
-            .header h1 {
-                font-size: 2em;
-            }
-
-            .upload-options {
-                grid-template-columns: 1fr;
-            }
-
-            .modal-content {
-                margin: 20px;
-                max-width: 90%;
-                padding: 20px;
-            }
-
-            .modal-details {
-                grid-template-columns: 1fr;
-            }
-
-            .camera-container {
-                margin: 10px;
-                padding: 15px;
-                max-width: 95%;
-            }
-
-            .camera-controls {
-                flex-direction: column;
-            }
-        }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 Robot vs Human Classifier</h1>
-            <p>Încarcă o imagine și află dacă este un robot sau un om!</p>
-        </div>
-
-        <div class="main-content">
-            <!-- Upload and Prediction Section -->
-            <div class="card">
-                <h2>📤 Încarcă Imagine</h2>
+<body class="bg-snapchat-black min-h-screen">
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-3 max-w-md"></div>
+    
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        
+        <!-- Header -->
+        <header class="text-center mb-12 animate-fade-in">
+            <div class="inline-block mb-6">
+                <h1 class="text-6xl font-black text-snapchat-yellow mb-2 tracking-tight">
+                    🤖 AI Classifier
+                </h1>
+                <div class="h-1 bg-snapchat-yellow rounded-full"></div>
+            </div>
+            <p class="text-white text-xl font-light">
+                Discover if it's <span class="text-snapchat-yellow font-bold">Human</span> or <span class="text-snapchat-yellow font-bold">Robot</span>
+            </p>
+        </header>
+        
+        <!-- Main Grid -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-8">
+            
+            <!-- Upload Section -->
+            <div class="glass rounded-3xl p-8 animate-scale-in">
+                <h2 class="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                    <span>📸</span> Upload Image
+                </h2>
                 
-                <div class="upload-options">
-                    <button class="upload-option-btn" id="cameraBtn">
-                        <span class="icon">📷</span>
-                        Folosește Camera
+                <!-- Upload Options -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button onclick="openCameraModal()" 
+                            class="bg-snapchat-yellow hover:bg-yellow-300 text-black font-bold py-6 px-4 rounded-2xl transition-all duration-300 transform hover:scale-105 glow-hover flex flex-col items-center gap-2">
+                        <span class="text-4xl">📷</span>
+                        <span>Use Camera</span>
                     </button>
-                    <button class="upload-option-btn" id="fileBtn">
-                        <span class="icon">📁</span>
-                        Alege din Fișiere
-                    </button>
-                </div>
-
-                <div class="upload-area" id="uploadArea" style="display: none;">
-                    <div class="upload-icon">📷</div>
-                    <p><strong>Click pentru a selecta</strong> sau drag & drop</p>
-                    <p style="color: #888; margin-top: 10px;">PNG, JPG, JPEG, GIF, BMP (max 16MB)</p>
-                </div>
-
-                <input type="file" id="fileInput" accept="image/*">
-
-                <div class="preview-container">
-                    <img id="imagePreview" alt="Preview">
-                </div>
-
-                <div style="text-align: center; margin-top: 20px;">
-                    <button class="btn" id="predictBtn" disabled>
-                        <span id="btnText">🔍 Analizează Imaginea</span>
-                        <span id="btnLoading" style="display: none;" class="loading"></span>
-                    </button>
-                </div>
-
-                <div class="error" id="errorMsg"></div>
-
-                <div class="result-container" id="resultContainer">
-                    <h3 style="color: #667eea; margin-bottom: 15px;">📊 Rezultat Predicție</h3>
                     
-                    <div class="result-item">
-                        <span class="result-label">Clasificare:</span>
-                        <div id="classResult"></div>
+                    <button onclick="document.getElementById('fileInput').click()" 
+                            class="bg-white hover:bg-gray-100 text-black font-bold py-6 px-4 rounded-2xl transition-all duration-300 transform hover:scale-105 flex flex-col items-center gap-2">
+                        <span class="text-4xl">📁</span>
+                        <span>Upload File</span>
+                    </button>
+                </div>
+                
+                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                
+                <!-- Drag & Drop Area -->
+                <div id="dropArea" 
+                     class="border-4 border-dashed border-snapchat-yellow rounded-3xl p-12 text-center transition-all duration-300 hover:bg-white/5 cursor-pointer"
+                     ondrop="handleDrop(event)" 
+                     ondragover="handleDragOver(event)" 
+                     ondragleave="handleDragLeave(event)"
+                     onclick="document.getElementById('fileInput').click()">
+                    <div class="text-6xl mb-4">⬆️</div>
+                    <p class="text-white text-xl font-semibold mb-2">Drag & Drop Image Here</p>
+                    <p class="text-gray-400">or click to browse</p>
+                </div>
+                
+                <!-- Preview Area -->
+                <div id="preview-container" class="hidden mt-6">
+                    <div class="relative">
+                        <img id="preview-image" class="w-full rounded-2xl shadow-2xl" alt="Preview">
+                        <button onclick="clearPreview()" 
+                                class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110">
+                            ✕
+                        </button>
                     </div>
-
-                    <div class="result-item">
-                        <span class="result-label">Încredere:</span>
-                        <div class="confidence-bar">
-                            <div class="confidence-fill" id="confidenceBar">0%</div>
+                    
+                    <button id="classify-btn" 
+                            onclick="classifyImage()" 
+                            class="w-full mt-6 bg-snapchat-yellow hover:bg-yellow-300 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 glow-hover text-lg">
+                        🚀 Classify Image
+                    </button>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="loading-state" class="hidden mt-6 text-center">
+                    <div class="spinner mx-auto mb-4"></div>
+                    <p class="text-white text-lg font-semibold">Analyzing image...</p>
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="glass rounded-3xl p-8 animate-scale-in">
+                <h2 class="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                    <span>🎯</span> Results
+                </h2>
+                
+                <div id="results-placeholder" class="text-center py-12">
+                    <div class="text-6xl mb-4">🔍</div>
+                    <p class="text-gray-400 text-lg">Upload an image to see results</p>
+                </div>
+                
+                <div id="results-content" class="hidden">
+                    <!-- Result Card -->
+                    <div class="bg-snapchat-gray rounded-2xl p-6 mb-6 border-2 border-snapchat-yellow animate-bounce-in">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-gray-400 font-semibold">Classification:</span>
+                            <span id="result-class" class="text-3xl font-black text-snapchat-yellow"></span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-gray-400">Confidence</span>
+                                <span id="result-confidence" class="text-white font-bold"></span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+                                <div id="confidence-bar" class="bg-snapchat-yellow h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-xs text-gray-500 flex items-center gap-2">
+                            <span>⏱️</span>
+                            <span id="result-timestamp"></span>
                         </div>
                     </div>
-
-                    <div class="result-item" style="font-size: 0.9em; color: #666;">
-                        <span class="result-label">Timestamp:</span>
-                        <span id="timestamp"></span>
+                    
+                    <!-- Probability Breakdown -->
+                    <div class="bg-snapchat-gray rounded-2xl p-6">
+                        <h3 class="text-white font-bold mb-4 text-lg">Probability Breakdown</h3>
+                        <div id="probabilities-container" class="space-y-3"></div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Statistics Section -->
-            <div class="card">
-                <h2>📈 Statistici</h2>
-                
-                <div class="statistics" id="statistics">
-                    <div class="stat-box">
-                        <div class="stat-number" id="totalPredictions">-</div>
-                        <div class="stat-label">Total Predicții</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="humanCount">-</div>
-                        <div class="stat-label">👤 Oameni</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="robotCount">-</div>
-                        <div class="stat-label">🤖 Roboți</div>
-                    </div>
-                </div>
-
-                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 10px;">📜 Istoric Recent</h3>
-                <div class="history-list" id="historyList">
-                    <p style="text-align: center; color: #888;">Se încarcă...</p>
                 </div>
             </div>
         </div>
+        
+        <!-- History Section -->
+        <div class="glass rounded-3xl p-8 animate-slide-up">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+                    <span>📊</span> Classification History
+                </h2>
+                <button onclick="loadHistory()" 
+                        class="bg-snapchat-yellow hover:bg-yellow-300 text-black font-bold py-2 px-6 rounded-xl transition-all duration-300 transform hover:scale-105">
+                    🔄 Refresh
+                </button>
+            </div>
+            
+            <div id="history-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- History items will be loaded here -->
+            </div>
+            
+            <div id="history-placeholder" class="text-center py-12">
+                <div class="text-6xl mb-4">📭</div>
+                <p class="text-gray-400 text-lg">No classifications yet</p>
+            </div>
+        </div>
     </div>
-
+    
     <!-- Camera Modal -->
-    <div id="cameraModal">
-        <div class="camera-container">
-            <h2 style="color: #667eea; margin-bottom: 20px;">📷 Folosește Camera</h2>
-            <video id="cameraVideo" autoplay playsinline></video>
-            <canvas id="cameraCanvas"></canvas>
-            <div class="camera-controls">
-                <button class="btn" id="captureBtn">📸 Capturează Fotografia</button>
-                <button class="btn" id="closeCameraBtn" style="background: #f44336;">✖ Închide</button>
+    <div id="camera-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-snapchat-gray rounded-3xl p-8 max-w-2xl w-full animate-scale-in">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-white">📷 Camera Capture</h3>
+                <button onclick="closeCameraModal()" 
+                        class="text-white hover:text-snapchat-yellow text-3xl transition-colors duration-300">
+                    ✕
+                </button>
+            </div>
+            
+            <div class="relative mb-6">
+                <video id="camera-preview" autoplay playsinline class="w-full rounded-2xl bg-black"></video>
+                <canvas id="camera-canvas" class="hidden"></canvas>
+            </div>
+            
+            <div class="flex gap-4">
+                <button onclick="capturePhoto()" 
+                        class="flex-1 bg-snapchat-yellow hover:bg-yellow-300 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 glow-hover">
+                    📸 Capture Photo
+                </button>
+                <button onclick="closeCameraModal()" 
+                        class="flex-1 bg-white hover:bg-gray-100 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300">
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
-
-    <!-- Image Modal -->
-    <div class="modal" id="imageModal">
-        <div class="modal-content">
-            <span class="modal-close" id="modalClose">&times;</span>
-            <h2 style="color: #667eea; margin-bottom: 20px;">📸 Detalii Predicție</h2>
-            <img class="modal-image" id="modalImage" alt="Prediction Image">
-            <div class="modal-details" id="modalDetails">
-                <!-- Details will be inserted here -->
+    
+    <!-- Image Viewer Modal -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 animate-fade-in" onclick="closeImageModal()">
+        <div class="max-w-4xl w-full animate-scale-in" onclick="event.stopPropagation()">
+            <div class="flex justify-end mb-4">
+                <button onclick="closeImageModal()" 
+                        class="bg-white hover:bg-gray-100 text-black rounded-full w-12 h-12 flex items-center justify-center text-2xl transition-all duration-300 transform hover:scale-110">
+                    ✕
+                </button>
             </div>
+            <img id="modal-image" class="w-full rounded-3xl shadow-2xl" alt="Full size">
         </div>
     </div>
 
     <script>
-        const API_URL = 'https://xenia-unsmotherable-colette.ngrok-free.dev/';
-        let selectedFile = null;
-
-        // Elements
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const imagePreview = document.getElementById('imagePreview');
-        const predictBtn = document.getElementById('predictBtn');
-        const btnText = document.getElementById('btnText');
-        const btnLoading = document.getElementById('btnLoading');
-        const resultContainer = document.getElementById('resultContainer');
-        const errorMsg = document.getElementById('errorMsg');
-
-        // Modal elements
-        const imageModal = document.getElementById('imageModal');
-        const modalClose = document.getElementById('modalClose');
-        const modalImage = document.getElementById('modalImage');
-        const modalDetails = document.getElementById('modalDetails');
-
-        // Camera elements
-        const cameraBtn = document.getElementById('cameraBtn');
-        const fileBtn = document.getElementById('fileBtn');
-        const cameraModal = document.getElementById('cameraModal');
-        const cameraVideo = document.getElementById('cameraVideo');
-        const cameraCanvas = document.getElementById('cameraCanvas');
-        const captureBtn = document.getElementById('captureBtn');
-        const closeCameraBtn = document.getElementById('closeCameraBtn');
+        // Configuration - Use empty string for relative URLs (same domain as frontend)
+        const API_URL = '';  // Relative URLs work with ngrok!
+        let currentImageFile = null;
         let cameraStream = null;
 
-        // Upload option buttons
-        cameraBtn.addEventListener('click', openCamera);
-        fileBtn.addEventListener('click', () => {
-            uploadArea.style.display = 'block';
-            fileInput.click();
-        });
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+            
+            toast.className = `${colors[type]} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-down transform transition-all duration-300`;
+            toast.innerHTML = `
+                <span class="text-2xl">${icons[type]}</span>
+                <span class="font-semibold">${message}</span>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
 
-        // Camera functionality
-        async function openCamera() {
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-                cameraVideo.srcObject = cameraStream;
-                cameraModal.classList.add('active');
-            } catch (error) {
-                alert('Nu s-a putut accesa camera: ' + error.message);
-                console.error('Camera error:', error);
+        // File Handling
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                currentImageFile = file;
+                displayPreview(file);
+                showToast('Image loaded successfully!', 'success');
+            } else {
+                showToast('Please select a valid image file', 'error');
             }
         }
 
-        function closeCamera() {
+        function handleDrop(event) {
+            event.preventDefault();
+            const dropArea = document.getElementById('dropArea');
+            dropArea.classList.remove('border-white', 'bg-white/10');
+            
+            const file = event.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                currentImageFile = file;
+                displayPreview(file);
+                showToast('Image dropped successfully!', 'success');
+            } else {
+                showToast('Please drop a valid image file', 'error');
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            const dropArea = document.getElementById('dropArea');
+            dropArea.classList.add('border-white', 'bg-white/10');
+        }
+
+        function handleDragLeave(event) {
+            const dropArea = document.getElementById('dropArea');
+            dropArea.classList.remove('border-white', 'bg-white/10');
+        }
+
+        function displayPreview(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview-image').src = e.target.result;
+                document.getElementById('preview-container').classList.remove('hidden');
+                document.getElementById('dropArea').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearPreview() {
+            currentImageFile = null;
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('dropArea').classList.remove('hidden');
+            document.getElementById('fileInput').value = '';
+            hideResults();
+        }
+
+        // Camera Functions
+        async function openCameraModal() {
+            document.getElementById('camera-modal').classList.remove('hidden');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' } 
+                });
+                cameraStream = stream;
+                document.getElementById('camera-preview').srcObject = stream;
+                showToast('Camera activated!', 'success');
+            } catch (error) {
+                showToast('Failed to access camera', 'error');
+                console.error('Camera error:', error);
+                closeCameraModal();
+            }
+        }
+
+        function closeCameraModal() {
             if (cameraStream) {
                 cameraStream.getTracks().forEach(track => track.stop());
                 cameraStream = null;
             }
-            cameraModal.classList.remove('active');
+            document.getElementById('camera-modal').classList.add('hidden');
         }
 
-        captureBtn.addEventListener('click', () => {
-            // Set canvas size to match video
-            cameraCanvas.width = cameraVideo.videoWidth;
-            cameraCanvas.height = cameraVideo.videoHeight;
+        function capturePhoto() {
+            const video = document.getElementById('camera-preview');
+            const canvas = document.getElementById('camera-canvas');
+            const context = canvas.getContext('2d');
             
-            // Draw video frame to canvas
-            const ctx = cameraCanvas.getContext('2d');
-            ctx.drawImage(cameraVideo, 0, 0);
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.scale(-1, 1);
+            context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
             
-            // Convert canvas to blob and create file
-            cameraCanvas.toBlob((blob) => {
-                const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
-                selectedFile = file;
-                
-                // Show preview
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    imagePreview.src = e.target.result;
-                    imagePreview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-                
-                // Enable predict button
-                predictBtn.disabled = false;
-                resultContainer.style.display = 'none';
-                errorMsg.style.display = 'none';
-                
-                // Close camera
-                closeCamera();
+            canvas.toBlob(blob => {
+                currentImageFile = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                displayPreview(currentImageFile);
+                closeCameraModal();
+                showToast('Photo captured!', 'success');
             }, 'image/jpeg');
-        });
-
-        closeCameraBtn.addEventListener('click', closeCamera);
-
-        // Modal functionality
-        modalClose.addEventListener('click', closeModal);
-        imageModal.addEventListener('click', (e) => {
-            if (e.target === imageModal) closeModal();
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-                closeCamera();
-            }
-        });
-
-        function openModal(prediction) {
-            // Set image
-            if (prediction.image_url) {
-                modalImage.src = prediction.image_url;
-                modalImage.style.display = 'block';
-            } else {
-                modalImage.style.display = 'none';
-            }
-
-            // Set details
-            const emoji = prediction.predicted_class === 'human' ? '👤' : '🤖';
-            const confidence = (prediction.confidence * 100).toFixed(1);
-            const date = prediction.created_at ? 
-                new Date(prediction.created_at).toLocaleString('ro-RO') : 
-                'N/A';
-
-            modalDetails.innerHTML = `
-                <div class="modal-detail-item">
-                    <div class="modal-detail-label">Clasă Prezisă</div>
-                    <div class="modal-detail-value">${emoji} ${prediction.predicted_class.toUpperCase()}</div>
-                </div>
-                <div class="modal-detail-item">
-                    <div class="modal-detail-label">Încredere</div>
-                    <div class="modal-detail-value">${confidence}%</div>
-                </div>
-                <div class="modal-detail-item">
-                    <div class="modal-detail-label">Nume Fișier</div>
-                    <div class="modal-detail-value" style="font-size: 0.9em; word-break: break-all;">${prediction.filename}</div>
-                </div>
-                <div class="modal-detail-item">
-                    <div class="modal-detail-label">Data și Ora</div>
-                    <div class="modal-detail-value" style="font-size: 1em;">${date}</div>
-                </div>
-            `;
-
-            imageModal.classList.add('active');
         }
 
-        function closeModal() {
-            imageModal.classList.remove('active');
-        }
-
-        // Upload area click
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        // File input change
-        fileInput.addEventListener('change', handleFileSelect);
-
-        // Drag and drop
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                handleFileSelect();
+        // Classification
+        async function classifyImage() {
+            if (!currentImageFile) {
+                showToast('Please select an image first', 'warning');
+                return;
             }
-        });
 
-        // Predict button
-        predictBtn.addEventListener('click', makePrediction);
+            const formData = new FormData();
+            formData.append('image', currentImageFile);
 
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (!file) return;
-
-            selectedFile = file;
-
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-
-            // Enable predict button
-            predictBtn.disabled = false;
-            resultContainer.style.display = 'none';
-            errorMsg.style.display = 'none';
-        }
-
-        async function makePrediction() {
-            if (!selectedFile) return;
-
-            // Show loading
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'inline-block';
-            predictBtn.disabled = true;
-            errorMsg.style.display = 'none';
+            document.getElementById('classify-btn').classList.add('hidden');
+            document.getElementById('loading-state').classList.remove('hidden');
+            hideResults();
 
             try {
-                const formData = new FormData();
-                formData.append('image', selectedFile);
-
                 const response = await fetch(`${API_URL}/api/predict`, {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    }
                 });
 
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Prediction failed');
-                }
-
-                // Display result
-                displayResult(data);
-
-                // Refresh statistics and history
-                loadStatistics();
-                loadHistory();
-
-            } catch (error) {
-                errorMsg.textContent = `Eroare: ${error.message}`;
-                errorMsg.style.display = 'block';
-            } finally {
-                // Hide loading
-                btnText.style.display = 'inline';
-                btnLoading.style.display = 'none';
-                predictBtn.disabled = false;
-            }
-        }
-
-        function displayResult(data) {
-            const classResult = document.getElementById('classResult');
-            const confidenceBar = document.getElementById('confidenceBar');
-            const timestamp = document.getElementById('timestamp');
-
-            // Class badge
-            const badgeClass = data.predicted_class === 'human' ? 'class-human' : 'class-robot';
-            const emoji = data.predicted_class === 'human' ? '👤' : '🤖';
-            const label = data.predicted_class === 'human' ? 'OM' : 'ROBOT';
-            
-            classResult.innerHTML = `<span class="class-badge ${badgeClass}">${emoji} ${label}</span>`;
-
-            // Confidence bar
-            const confidencePercent = (data.confidence * 100).toFixed(2);
-            confidenceBar.style.width = confidencePercent + '%';
-            confidenceBar.textContent = confidencePercent + '%';
-
-            // Timestamp
-            timestamp.textContent = new Date(data.timestamp).toLocaleString('ro-RO');
-
-            // Show result container
-            resultContainer.style.display = 'block';
-        }
-
-        async function loadStatistics() {
-            try {
-                const response = await fetch(`${API_URL}/api/statistics`);
-                const data = await response.json();
-
                 if (data.success) {
-                    const stats = data.statistics;
-                    document.getElementById('totalPredictions').textContent = stats.total || 0;
-                    document.getElementById('humanCount').textContent = stats.humans || 0;
-                    document.getElementById('robotCount').textContent = stats.robots || 0;
+                    displayResults(data);
+                    showToast(`Classified as ${data.predicted_class}!`, 'success');
+                    setTimeout(() => loadHistory(), 500);
+                } else {
+                    throw new Error(data.error || 'Classification failed');
                 }
             } catch (error) {
-                console.error('Error loading statistics:', error);
+                showToast('Classification failed: ' + error.message, 'error');
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('classify-btn').classList.remove('hidden');
+                document.getElementById('loading-state').classList.add('hidden');
             }
         }
 
+        function displayResults(data) {
+            document.getElementById('results-placeholder').classList.add('hidden');
+            document.getElementById('results-content').classList.remove('hidden');
+            
+            const classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
+            document.getElementById('result-class').textContent = `${classEmoji} ${data.predicted_class.toUpperCase()}`;
+            
+            const confidence = (data.confidence * 100).toFixed(1);
+            document.getElementById('result-confidence').textContent = `${confidence}%`;
+            
+            setTimeout(() => {
+                document.getElementById('confidence-bar').style.width = `${confidence}%`;
+            }, 100);
+            
+            const date = new Date(data.timestamp);
+            document.getElementById('result-timestamp').textContent = date.toLocaleString();
+            
+            const probContainer = document.getElementById('probabilities-container');
+            probContainer.innerHTML = '';
+            
+            Object.entries(data.all_probabilities).forEach(([className, probability]) => {
+                const percent = (probability * 100).toFixed(1);
+                const emoji = className.toLowerCase() === 'robot' ? '🤖' : '👤';
+                
+                probContainer.innerHTML += `
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">${emoji} ${className}</span>
+                            <span class="text-white font-semibold">${percent}%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div class="bg-snapchat-yellow h-full rounded-full transition-all duration-1000 ease-out" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function hideResults() {
+            document.getElementById('results-placeholder').classList.remove('hidden');
+            document.getElementById('results-content').classList.add('hidden');
+        }
+
+        // History
         async function loadHistory() {
+            console.log('Loading history from:', `${API_URL}/api/history`);
             try {
-                const response = await fetch(`${API_URL}/api/history?limit=10`);
+                const response = await fetch(`${API_URL}/api/history`, {
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
+                
+                console.log('History response status:', response.status);
                 const data = await response.json();
+                console.log('History data received:', data);
 
-                const historyList = document.getElementById('historyList');
+                const historyContainer = document.getElementById('history-container');
+                const placeholder = document.getElementById('history-placeholder');
 
-                if (data.success && data.predictions.length > 0) {
-                    historyList.innerHTML = data.predictions.map((pred, index) => {
-                        const emoji = pred.predicted_class === 'human' ? '👤' : '🤖';
-                        const confidence = (pred.confidence * 100).toFixed(1);
-                        const date = pred.created_at ? 
-                            new Date(pred.created_at).toLocaleString('ro-RO') : 
-                            'N/A';
+                // Backend returns 'predictions', not 'history'
+                const historyItems = data.predictions || data.history || [];
+                console.log('History items count:', historyItems.length);
+                
+                if (historyItems.length > 0) {
+                    placeholder.classList.add('hidden');
+                    historyContainer.classList.remove('hidden');
+                    historyContainer.innerHTML = '';
+
+                    historyItems.slice(0, 12).forEach((item, index) => {
+                        const classEmoji = item.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
+                        const confidence = (item.confidence * 100).toFixed(1);
+                        const date = new Date(item.created_at);
                         
-                        return `
-                            <div class="history-item" onclick="showPrediction(${index})" data-index="${index}">
-                                <div>
-                                    <strong>${emoji} ${pred.predicted_class.toUpperCase()}</strong><br>
-                                    <small style="color: #666;">${date}</small>
+                        const card = document.createElement('div');
+                        card.style.animationDelay = `${index * 0.05}s`;
+                        card.className = 'bg-snapchat-gray rounded-2xl overflow-hidden hover:scale-105 transition-all duration-300 cursor-pointer glow-hover animate-scale-in';
+                        card.onclick = () => openImageModal(item.image_url);
+                        
+                        card.innerHTML = `
+                            <img src="${item.image_url}" alt="${item.predicted_class}" class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-2xl">${classEmoji}</span>
+                                    <span class="text-snapchat-yellow font-bold text-lg">${item.predicted_class}</span>
                                 </div>
-                                <div style="text-align: right;">
-                                    <strong>${confidence}%</strong><br>
-                                    <small style="color: #666;">Click pentru detalii</small>
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-gray-400">Confidence</span>
+                                    <span class="text-white font-semibold">${confidence}%</span>
                                 </div>
+                                <div class="w-full bg-gray-700 rounded-full h-1 mt-2">
+                                    <div class="bg-snapchat-yellow h-full rounded-full" style="width: ${confidence}%"></div>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-2">${date.toLocaleString()}</div>
                             </div>
                         `;
-                    }).join('');
-
-                    // Store predictions for modal access
-                    window.historyPredictions = data.predictions;
+                        
+                        historyContainer.appendChild(card);
+                    });
                 } else {
-                    historyList.innerHTML = '<p style="text-align: center; color: #888;">Nicio predicție încă</p>';
+                    console.log('No history items found. Data received:', data);
+                    placeholder.classList.remove('hidden');
+                    historyContainer.classList.add('hidden');
                 }
             } catch (error) {
+                showToast('Failed to load history', 'error');
                 console.error('Error loading history:', error);
-                document.getElementById('historyList').innerHTML = 
-                    '<p style="text-align: center; color: #f44336;">Nu s-a putut încărca istoricul</p>';
+                console.error('Full error details:', error.message, error.stack);
             }
         }
 
-        function showPrediction(index) {
-            if (window.historyPredictions && window.historyPredictions[index]) {
-                openModal(window.historyPredictions[index]);
-            }
+        function openImageModal(imageUrl) {
+            document.getElementById('modal-image').src = imageUrl;
+            document.getElementById('image-modal').classList.remove('hidden');
         }
 
-        // Load initial data
-        loadStatistics();
-        loadHistory();
+        function closeImageModal() {
+            document.getElementById('image-modal').classList.add('hidden');
+        }
 
-        // Refresh statistics every 10 seconds
-        setInterval(() => {
-            loadStatistics();
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
             loadHistory();
-        }, 10000);
+            showToast('Welcome to AI Classifier! 🚀', 'info');
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeCameraModal();
+                closeImageModal();
+            }
+        });
     </script>
 </body>
 </html>
