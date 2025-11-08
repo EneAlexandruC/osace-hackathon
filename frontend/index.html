@@ -445,8 +445,8 @@
     </div>
 
     <script>
-        // Configuration - Use empty string for relative URLs (same domain as frontend)
-        const API_URL = '';  // Relative URLs work with ngrok!
+        // Configuration - Point to VM server
+        const API_URL = 'http://34.70.247.206:5000';  // VM IP address
         const CONFIDENCE_THRESHOLD = 0.75; // 75% threshold for unknown classification
         let currentImageFile = null;
         let cameraStream = null;
