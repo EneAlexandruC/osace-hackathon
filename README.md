@@ -4,7 +4,7 @@ Prototip funcțional de clasificare a imaginilor folosind CNN (Convolutional Neu
 
 ## Quick Start
 
-**Doar două comenzi pentru a porni totul:**
+Doar două comenzi pentru a porni totul:
 
 ```powershell
 # Terminal 1: Start Flask (API + Frontend)
@@ -14,9 +14,7 @@ python backend/app.py
 ngrok http 5000
 ```
 
-**Apoi deschide URL-ul ngrok în browser!**
-
-Vezi [START_HERE.md](START_HERE.md) pentru detalii complete.
+Apoi deschide URL-ul ngrok în browser.
 
 ---
 
@@ -42,22 +40,20 @@ Acest proiect implementează un sistem complet de clasificare a imaginilor care 
 - A doua fază (fine-tuning pe ultimele 50 straturi la lr=1e-5) a fost întreruptă din cauza unui fișier JPEG corupt; dataset-ul a fost curățat, iar finalizarea fine-tuning-ului rămâne ca next step.
 - Evoluția metricei de-a lungul epocilor (extrasă din `training_report.json`):
 
-![Evoluție metrice (train vs val)](assets/training_history.png)
-
-Datasetul utilizat pentru această rulare este [Robot Finder – Roboflow Universe](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl), aproximativ ~3.1k imagini împărțite 70/15/15.
+Datasetul utilizat pentru această rulare este [Robot Finder – Roboflow Universe](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl), aproximativ ~3.1k imagini împărțite 70/15/15. + aprox. 100 poze adăugate din drive-ul Osace Hackathon.
 
 
 ## Cerințe îndeplinite
 
-✅ **Dataset**: Robot vs Human (imagini publice) – preluat de la [roboflow.com](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl)  
-✅ **Model CNN**: Transfer learning cu EfficientNet + head custom și fine-tuning configurabil  
-✅ **Preprocesare**: Redimensionare (224x224 implicit), normalizare EfficientNet, augmentare extinsă  
-✅ **Split date**: 70% train, 15% validation, 15% test  
-✅ **Antrenare**: 15 epoci + fine-tuning suplimentar (opțional) cu raportare metrici  
-✅ **Export model**: Format .h5 pentru refolosire  
-✅ **API Flask**: Endpoints pentru predicții, statistici și raportare “unknown” când scorul e sub prag  
-✅ **Persistență**: Salvare automată în Supabase (filename, predicted_class, confidence, timestamp)  
-✅ **Interfață web**: Upload imagini + afișare rezultate în timp real  
+- **Dataset**: Robot vs Human (imagini publice) – preluat de la [roboflow.com](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl)  
+- **Model CNN**: Transfer learning cu EfficientNet + head custom și fine-tuning configurabil  
+- **Preprocesare**: Redimensionare (224x224 implicit), normalizare EfficientNet, augmentare extinsă  
+- **Split date**: 70% train, 15% validation, 15% test  
+- **Antrenare**: 15 epoci + fine-tuning suplimentar (opțional) cu raportare metrici  
+- **Export model**: Format .h5 pentru refolosire  
+- **API Flask**: Endpoints pentru predicții, statistici și raportare “unknown” când scorul e sub prag  
+- **Persistență**: Salvare automată în Supabase (filename, predicted_class, confidence, timestamp)  
+- **Interfață web**: Upload imagini + afișare rezultate în timp real  
 
 ## Structura Proiectului
 
@@ -256,10 +252,7 @@ Toate configurările se află în `backend/config.py`:
 - **Precision/Recall test**: 0.9956  
 - **Learning rate schedule**: ReduceLROnPlateau (a scăzut la 2.5e-4 pe final)
 
-Artefacte generate automat:
 - `assets/training_history.png` – evoluția accuracy/loss/precision/recall (train vs val)
-- `training_report.json` – metrici detaliate + hiperparametri
-- `training_history.png` (original din run-ul TensorFlow, dacă a fost generat înainte de oprirea fine-tuning-ului)
 
 ## Baza de Date (Supabase)
 
