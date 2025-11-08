@@ -371,6 +371,7 @@ Acest proiect este creat în scop educațional pentru OSACE Hackathon.
 ## Acces rapid la aplicație
 
 Scanează QR-ul pentru a deschide interfața web:
-Atenție! Pentru ca aplicația să funcționeze trebuie ca serverul să fie pornit. În această clipă serverul este laptop-ul lui Alex.
 
 ![QR code pentru aplicație](assets/QrCode.jpg)
+
+Atenție! Pentru ca aplicația să funcționeze trebuie ca serverul să fie pornit. În această clipă serverul este laptop-ul lui Alex.
