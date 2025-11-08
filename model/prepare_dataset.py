@@ -10,23 +10,21 @@ import shutil
 from sklearn.model_selection import train_test_split
 import random
 
-# Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from backend.config import RAW_DATA_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR
+from backend.config import RAW_DATA_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR, CLASS_NAMES
 
 
 def create_directory_structure():
     """Create the directory structure for the dataset"""
-    directories = [
-        RAW_DATA_DIR / "human",
-        RAW_DATA_DIR / "robot",
-        TRAIN_DIR / "human",
-        TRAIN_DIR / "robot",
-        VAL_DIR / "human",
-        VAL_DIR / "robot",
-        TEST_DIR / "human",
-        TEST_DIR / "robot",
-    ]
+    directories = []
+
+    for class_name in CLASS_NAMES:
+        directories.extend([
+            RAW_DATA_DIR / class_name,
+            TRAIN_DIR / class_name,
+            VAL_DIR / class_name,
+            TEST_DIR / class_name,
+        ])
     
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
@@ -47,8 +45,8 @@ def download_sample_images():
     print("="*60)
     print("\nThis script has created the directory structure.")
     print("You need to populate it with images:\n")
-    print(f"1. Place human images in: {RAW_DATA_DIR / 'human'}")
-    print(f"2. Place robot images in: {RAW_DATA_DIR / 'robot'}")
+    for idx, class_name in enumerate(CLASS_NAMES, start=1):
+        print(f"{idx}. Place '{class_name}' images in: {RAW_DATA_DIR / class_name}")
     print("\nRecommended sources:")
     print("- Kaggle: Search for 'robot vs human' or similar datasets")
     print("- Google Images: Use bulk downloaders with proper licenses")
@@ -69,10 +67,9 @@ def split_dataset(train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
     """
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 0.01, "Ratios must sum to 1"
     
-    for class_name in ['human', 'robot']:
+    for class_name in CLASS_NAMES:
         raw_class_dir = RAW_DATA_DIR / class_name
         
-        # Get all image files
         image_files = [f for f in raw_class_dir.glob('*') 
                       if f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.gif']]
         
@@ -82,10 +79,8 @@ def split_dataset(train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
         
         print(f"\nProcessing {len(image_files)} images for class '{class_name}'...")
         
-        # Shuffle
         random.shuffle(image_files)
         
-        # Calculate split points
         n_train = int(len(image_files) * train_ratio)
         n_val = int(len(image_files) * val_ratio)
         
@@ -93,7 +88,6 @@ def split_dataset(train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
         val_files = image_files[n_train:n_train + n_val]
         test_files = image_files[n_train + n_val:]
         
-        # Copy files to appropriate directories
         for file_list, target_dir in [
             (train_files, TRAIN_DIR / class_name),
             (val_files, VAL_DIR / class_name),
@@ -119,7 +113,7 @@ def verify_dataset():
     
     for split_name, split_dir in [('Train', TRAIN_DIR), ('Validation', VAL_DIR), ('Test', TEST_DIR)]:
         print(f"\n{split_name} Set:")
-        for class_name in ['human', 'robot']:
+        for class_name in CLASS_NAMES:
             class_dir = split_dir / class_name
             n_images = len(list(class_dir.glob('*')))
             print(f"  {class_name}: {n_images} images")
@@ -154,23 +148,23 @@ def main():
     """Main function to prepare the dataset"""
     print("Starting dataset preparation...\n")
     
-    # Create directory structure
     create_directory_structure()
     
-    # Check if raw data exists
-    human_images = list((RAW_DATA_DIR / "human").glob('*'))
-    robot_images = list((RAW_DATA_DIR / "robot").glob('*'))
+    missing_classes = [
+        class_name for class_name in CLASS_NAMES
+        if len(list((RAW_DATA_DIR / class_name).glob('*'))) == 0
+    ]
     
-    if len(human_images) == 0 or len(robot_images) == 0:
+    if missing_classes:
         download_sample_images()
-        print("\n⚠ Please add images to the raw directory and run this script again.")
+        print("\n⚠ Please add images to the raw directory for the following classes and run this script again:")
+        for class_name in missing_classes:
+            print(f"  - {class_name}: {RAW_DATA_DIR / class_name}")
         return
     
-    # Split dataset
     print("\nSplitting dataset into train/val/test...")
     split_dataset(train_ratio=0.7, val_ratio=0.15, test_ratio=0.15)
     
-    # Verify
     verify_dataset()
     
     print("\n✓ Dataset preparation complete!")
