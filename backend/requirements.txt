@@ -1,0 +1,23 @@
+# Backend dependencies for Robot vs Human CNN Classifier
+
+# Web framework
+Flask
+Flask-CORS
+
+# Deep Learning
+tensorflow
+keras
+Pillow
+numpy
+
+# Database
+supabase
+
+# Utilities
+python-dotenv
+requests
+matplotlib
+scikit-learn
+
+# Image processing
+opencv-python

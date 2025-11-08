@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# TensorFlow/Keras
+*.h5
+*.hdf5
+*.pb
+checkpoint
+*.ckpt.*
+
+# Training outputs
+logs/
+training_history.png
+training_report.json
+
+# Data
+data/raw/*
+data/train/*
+data/val/*
+data/test/*
+!data/raw/.gitkeep
+!data/train/.gitkeep
+!data/val/.gitkeep
+!data/test/.gitkeep
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+Thumbs.db
+desktop.ini

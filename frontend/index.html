@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot vs Human Classifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: #f8f9ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #f0f4ff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 10px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .preview-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #imagePreview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .result-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result-item {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .confidence-bar {
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .class-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .class-human {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .class-robot {
+            background: #2196F3;
+            color: white;
+        }
+
+        .statistics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .history-item {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .statistics {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Robot vs Human Classifier</h1>
+            <p>Încarcă o imagine și află dacă este un robot sau un om!</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Upload and Prediction Section -->
+            <div class="card">
+                <h2>📤 Încarcă Imagine</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📷</div>
+                    <p><strong>Click pentru a selecta</strong> sau drag & drop</p>
+                    <p style="color: #888; margin-top: 10px;">PNG, JPG, JPEG, GIF, BMP (max 16MB)</p>
+                </div>
+
+                <input type="file" id="fileInput" accept="image/*">
+
+                <div class="preview-container">
+                    <img id="imagePreview" alt="Preview">
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn" id="predictBtn" disabled>
+                        <span id="btnText">🔍 Analizează Imaginea</span>
+                        <span id="btnLoading" style="display: none;" class="loading"></span>
+                    </button>
+                </div>
+
+                <div class="error" id="errorMsg"></div>
+
+                <div class="result-container" id="resultContainer">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">📊 Rezultat Predicție</h3>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Clasificare:</span>
+                        <div id="classResult"></div>
+                    </div>
+
+                    <div class="result-item">
+                        <span class="result-label">Încredere:</span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="confidenceBar">0%</div>
+                        </div>
+                    </div>
+
+                    <div class="result-item" style="font-size: 0.9em; color: #666;">
+                        <span class="result-label">Timestamp:</span>
+                        <span id="timestamp"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Section -->
+            <div class="card">
+                <h2>📈 Statistici</h2>
+                
+                <div class="statistics" id="statistics">
+                    <div class="stat-box">
+                        <div class="stat-number" id="totalPredictions">-</div>
+                        <div class="stat-label">Total Predicții</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="humanCount">-</div>
+                        <div class="stat-label">👤 Oameni</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="robotCount">-</div>
+                        <div class="stat-label">🤖 Roboți</div>
+                    </div>
+                </div>
+
+                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 10px;">📜 Istoric Recent</h3>
+                <div class="history-list" id="historyList">
+                    <p style="text-align: center; color: #888;">Se încarcă...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let selectedFile = null;
+
+        // Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const predictBtn = document.getElementById('predictBtn');
+        const btnText = document.getElementById('btnText');
+        const btnLoading = document.getElementById('btnLoading');
+        const resultContainer = document.getElementById('resultContainer');
+        const errorMsg = document.getElementById('errorMsg');
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File input change
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        // Predict button
+        predictBtn.addEventListener('click', makePrediction);
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            selectedFile = file;
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // Enable predict button
+            predictBtn.disabled = false;
+            resultContainer.style.display = 'none';
+            errorMsg.style.display = 'none';
+        }
+
+        async function makePrediction() {
+            if (!selectedFile) return;
+
+            // Show loading
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-block';
+            predictBtn.disabled = true;
+            errorMsg.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                const response = await fetch(`${API_URL}/api/predict`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Prediction failed');
+                }
+
+                // Display result
+                displayResult(data);
+
+                // Refresh statistics and history
+                loadStatistics();
+                loadHistory();
+
+            } catch (error) {
+                errorMsg.textContent = `Eroare: ${error.message}`;
+                errorMsg.style.display = 'block';
+            } finally {
+                // Hide loading
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                predictBtn.disabled = false;
+            }
+        }
+
+        function displayResult(data) {
+            const classResult = document.getElementById('classResult');
+            const confidenceBar = document.getElementById('confidenceBar');
+            const timestamp = document.getElementById('timestamp');
+
+            // Class badge
+            const badgeClass = data.predicted_class === 'human' ? 'class-human' : 'class-robot';
+            const emoji = data.predicted_class === 'human' ? '👤' : '🤖';
+            const label = data.predicted_class === 'human' ? 'OM' : 'ROBOT';
+            
+            classResult.innerHTML = `<span class="class-badge ${badgeClass}">${emoji} ${label}</span>`;
+
+            // Confidence bar
+            const confidencePercent = (data.confidence * 100).toFixed(2);
+            confidenceBar.style.width = confidencePercent + '%';
+            confidenceBar.textContent = confidencePercent + '%';
+
+            // Timestamp
+            timestamp.textContent = new Date(data.timestamp).toLocaleString('ro-RO');
+
+            // Show result container
+            resultContainer.style.display = 'block';
+        }
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_URL}/api/statistics`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const stats = data.statistics;
+                    document.getElementById('totalPredictions').textContent = stats.total || 0;
+                    document.getElementById('humanCount').textContent = stats.humans || 0;
+                    document.getElementById('robotCount').textContent = stats.robots || 0;
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch(`${API_URL}/api/history?limit=10`);
+                const data = await response.json();
+
+                const historyList = document.getElementById('historyList');
+
+                if (data.success && data.predictions.length > 0) {
+                    historyList.innerHTML = data.predictions.map(pred => {
+                        const emoji = pred.predicted_class === 'human' ? '👤' : '🤖';
+                        const confidence = (pred.confidence * 100).toFixed(1);
+                        const date = new Date(pred.timestamp).toLocaleString('ro-RO');
+                        
+                        return `
+                            <div class="history-item">
+                                <div>
+                                    <strong>${emoji} ${pred.predicted_class.toUpperCase()}</strong><br>
+                                    <small style="color: #666;">${date}</small>
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong>${confidence}%</strong><br>
+                                    <small style="color: #666;">${pred.filename}</small>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    historyList.innerHTML = '<p style="text-align: center; color: #888;">Nicio predicție încă</p>';
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+                document.getElementById('historyList').innerHTML = 
+                    '<p style="text-align: center; color: #f44336;">Nu s-a putut încărca istoricul</p>';
+            }
+        }
+
+        // Load initial data
+        loadStatistics();
+        loadHistory();
+
+        // Refresh statistics every 10 seconds
+        setInterval(() => {
+            loadStatistics();
+            loadHistory();
+        }, 10000);
+    </script>
+</body>
+</html>
