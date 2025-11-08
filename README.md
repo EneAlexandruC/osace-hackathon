@@ -84,13 +84,20 @@ Interfața din index.html permite:
 
 7. Baza de Date Supabase
 
-Tabel utilizat: predictions
+Tabel utilizat: classification 
 Coloană	Tip	Descriere
 id	integer	Cheie primară
 filename	text	Numele fișierului
-predicted_class	text	human / robot
+predicted_class	text	human / robot / unknown
 confidence	float	Încredere model
-timestamp	timestamp	Moment salvare
+User_feedback	text	Feedback-ul userului
+Created_at	timestamp	Moment salvare
+		
+		
+		
+		
+		
+		
 		
 8. Funcționalități ale Aplicației Web
 
