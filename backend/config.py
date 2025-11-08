@@ -10,11 +10,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Supabase configuration
 SUPABASE_URL = "https://sjfmoxyekzlkmkcrglyx.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZm1veHlla3psa21rY3JnbHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1NzExMDAsImV4cCI6MjA3ODE0NzEwMH0.JDhaxBPjiCNsTR7R00X0AbVX7wlXJJ7PgCiubjuu-iw"
-SUPABASE_TABLE = "predictions"
+SUPABASE_TABLE = "classification"
+SUPABASE_BUCKET = "classification-images"
 
 # Model configuration
 MODEL_DIR = BASE_DIR / "model"
-MODEL_PATH = MODEL_DIR / "robot_vs_human_classifier.h5"
+MODEL_PATH = MODEL_DIR / "robot_vs_human_classifier.h5"  # Can be .h5 or .pth
+MODEL_TYPE = "auto"  # auto, keras, or pytorch
 MODEL_INPUT_SIZE = (224, 224)  # Image size for the model
 NUM_CLASSES = 2  # robots vs humans
 

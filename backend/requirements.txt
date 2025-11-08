@@ -7,6 +7,8 @@ Flask-CORS
 # Deep Learning
 tensorflow
 keras
+torch
+torchvision
 Pillow
 numpy
 

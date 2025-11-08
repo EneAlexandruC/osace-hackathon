@@ -12,7 +12,7 @@ import random
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import RAW_DATA_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR
+from backend.config import RAW_DATA_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR
 
 
 def create_directory_structure():

@@ -8,20 +8,65 @@ import os
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import SUPABASE_URL, SUPABASE_KEY, SUPABASE_TABLE
+from config import SUPABASE_URL, SUPABASE_KEY, SUPABASE_TABLE, SUPABASE_BUCKET
 
 
 class SupabaseDB:
     def __init__(self):
         """Initialize Supabase client"""
         self.client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        self.bucket = SUPABASE_BUCKET
+    
+    def upload_image(self, file_bytes: bytes, filename: str) -> str:
+        """
+        Upload an image to Supabase Storage
+        
+        Args:
+            file_bytes: The image file as bytes
+            filename: Name to save the file as
+            
+        Returns:
+            The public URL of the uploaded image
+        """
+        try:
+            # Upload to Supabase Storage
+            self.client.storage.from_(self.bucket).upload(
+                path=filename,
+                file=file_bytes,
+                file_options={"content-type": "image/jpeg"}
+            )
+            
+            # Get public URL
+            public_url = self.client.storage.from_(self.bucket).get_public_url(filename)
+            print(f"✓ Image uploaded to Supabase Storage: {filename}")
+            return public_url
+            
+        except Exception as e:
+            print(f"Error uploading image to storage: {e}")
+            raise
+    
+    def get_image_url(self, filename: str) -> str:
+        """
+        Get the public URL for an image in storage
+        
+        Args:
+            filename: Name of the file in storage
+            
+        Returns:
+            The public URL of the image
+        """
+        try:
+            return self.client.storage.from_(self.bucket).get_public_url(filename)
+        except Exception as e:
+            print(f"Error getting image URL: {e}")
+            return ""
     
     def save_prediction(self, filename: str, predicted_class: str, confidence: float) -> dict:
         """
         Save a prediction to the database
         
         Args:
-            filename: Name of the uploaded image file
+            filename: Name of the uploaded image file (used to construct Supabase Storage URL)
             predicted_class: The predicted class (human or robot)
             confidence: Confidence score of the prediction (0-1)
             
@@ -32,8 +77,7 @@ class SupabaseDB:
             data = {
                 "filename": filename,
                 "predicted_class": predicted_class,
-                "confidence": float(confidence),
-                "timestamp": datetime.now().isoformat()
+                "confidence": float(confidence)
             }
             
             response = self.client.table(SUPABASE_TABLE).insert(data).execute()
@@ -57,7 +101,7 @@ class SupabaseDB:
         try:
             response = self.client.table(SUPABASE_TABLE)\
                 .select("*")\
-                .order("timestamp", desc=True)\
+                .order("created_at", desc=True)\
                 .limit(limit)\
                 .execute()
             return response.data

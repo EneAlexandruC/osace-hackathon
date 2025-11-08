@@ -6,8 +6,7 @@ import json
 from pathlib import Path
 
 # API Configuration
-API_BASE_URL = "http://localhost:5000"
-
+API_BASE_URL = "https://xenia-unsmotherable-colette.ngrok-free.dev/"
 
 def test_health():
     """Test if the API is running"""
