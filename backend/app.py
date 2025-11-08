@@ -13,18 +13,26 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.config import (
-    MODEL_PATH, MODEL_TYPE, MODEL_INPUT_SIZE, CLASS_NAMES, UPLOAD_FOLDER,
-    ALLOWED_EXTENSIONS, MAX_CONTENT_LENGTH, FLASK_HOST, FLASK_PORT, FLASK_DEBUG
+    MODEL_PATH,
+    MODEL_TYPE,
+    MODEL_INPUT_SIZE,
+    CLASS_NAMES,
+    UPLOAD_FOLDER,
+    ALLOWED_EXTENSIONS,
+    MAX_CONTENT_LENGTH,
+    FLASK_HOST,
+    FLASK_PORT,
+    FLASK_DEBUG,
+    MODEL_BACKBONE,
+    PREDICTION_THRESHOLD,
+    PREDICTION_MARGIN,
 )
 from backend.supabase_db import SupabaseDB
 
-# Initialize Flask app
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 
-# Configure CORS with proper headers for ngrok
 CORS(app, resources={
     r"/*": {
         "origins": "*",
@@ -36,7 +44,6 @@ CORS(app, resources={
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Add ngrok-specific headers to all responses
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -44,11 +51,35 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
     return response
 
-# Global variables
 model = None
 model_type = None  # 'keras' or 'pytorch'
 db = None
 
+
+def analyze_probabilities(probabilities):
+    """
+    Apply thresholding logic to convert raw probabilities into a prediction.
+    """
+    sorted_indices = np.argsort(probabilities)[::-1]
+    top_idx = sorted_indices[0]
+    top_conf = float(probabilities[top_idx])
+    second_idx = sorted_indices[1] if len(sorted_indices) > 1 else top_idx
+    second_conf = float(probabilities[second_idx]) if len(sorted_indices) > 1 else 0.0
+
+    margin = top_conf - second_conf
+    is_confident = (top_conf >= PREDICTION_THRESHOLD) and (margin >= PREDICTION_MARGIN)
+    predicted_label = CLASS_NAMES[top_idx] if is_confident else "unknown"
+
+    return {
+        "predicted_label": predicted_label,
+        "confidence": top_conf,
+        "best_class": CLASS_NAMES[top_idx],
+        "best_confidence": top_conf,
+        "second_class": CLASS_NAMES[second_idx] if len(sorted_indices) > 1 else None,
+        "second_confidence": second_conf,
+        "margin": margin,
+        "is_confident": is_confident,
+    }
 
 def load_model():
     """Load the trained model (supports both Keras and PyTorch)"""
@@ -60,7 +91,6 @@ def load_model():
             print("Please train the model first using train.py")
             return False
         
-        # Detect model type
         model_extension = MODEL_PATH.suffix.lower()
         
         if MODEL_TYPE == "auto":
@@ -86,10 +116,8 @@ def load_model():
             import torch
             import torch.nn as nn
             
-            # Load the model state dict
             model = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
             
-            # If it's just a state dict, you need to instantiate the model architecture
             if isinstance(model, dict):
                 print("⚠ WARNING: Loaded state_dict. You need to define the model architecture.")
                 print("Please provide the full model or update the code with your model architecture.")
@@ -135,28 +163,29 @@ def preprocess_image(image_bytes):
     Returns:
         Preprocessed image array/tensor ready for prediction
     """
-    # Open image
     image = Image.open(io.BytesIO(image_bytes))
     
-    # Convert to RGB if needed
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    # Resize to model input size
     image = image.resize(MODEL_INPUT_SIZE)
     
     if model_type == 'keras':
-        # Keras preprocessing
-        image_array = np.array(image) / 255.0
+        image_array = np.array(image).astype(np.float32)
         image_array = np.expand_dims(image_array, axis=0)
+
+        if MODEL_BACKBONE.lower().startswith("efficientnet"):
+            from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
+
+            image_array = efficientnet_preprocess_input(image_array)
+        else:
+            image_array /= 255.0
         return image_array
         
     elif model_type == 'pytorch':
-        # PyTorch preprocessing
         import torch
         from torchvision import transforms
         
-        # Define transforms
         transform = transforms.Compose([
             transforms.ToTensor(),  # Converts to [0, 1] and changes to CxHxW
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -192,102 +221,80 @@ def predict():
     Expected: multipart/form-data with 'image' field
     Returns: JSON with predicted class and confidence
     """
-    # Check if model is loaded
     if model is None:
         return jsonify({
             'error': 'Model not loaded. Please train the model first.'
         }), 503
     
-    # Check if image is in request
     if 'image' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
     
     file = request.files['image']
     
-    # Check if file is selected
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    # Check file extension
     if not allowed_file(file.filename):
         return jsonify({
             'error': f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'
         }), 400
     
     try:
-        # Read and preprocess image
         image_bytes = file.read()
         processed_image = preprocess_image(image_bytes)
         
-        # Make prediction based on model type
         if model_type == 'keras':
             predictions = model.predict(processed_image, verbose=0)
-            predicted_class_idx = np.argmax(predictions[0])
-            confidence = float(predictions[0][predicted_class_idx])
-            
-            # Get all class probabilities
-            class_probabilities = {
-                CLASS_NAMES[i]: float(predictions[0][i])
-                for i in range(len(CLASS_NAMES))
-            }
-            
+            probabilities = predictions[0]
         elif model_type == 'pytorch':
             import torch
             
             with torch.no_grad():
                 outputs = model(processed_image)
-                
-                # Apply softmax to get probabilities
-                probabilities = torch.nn.functional.softmax(outputs, dim=1)
-                predicted_class_idx = torch.argmax(probabilities, dim=1).item()
-                confidence = float(probabilities[0][predicted_class_idx])
-                
-                # Get all class probabilities
-                class_probabilities = {
-                    CLASS_NAMES[i]: float(probabilities[0][i])
-                    for i in range(len(CLASS_NAMES))
-                }
+                probabilities = torch.nn.functional.softmax(outputs, dim=1)[0].cpu().numpy()
+        else:
+            return jsonify({'error': 'Unsupported model type'}), 500
+
+        analysis = analyze_probabilities(probabilities)
+        class_probabilities = {
+            CLASS_NAMES[i]: float(probabilities[i])
+            for i in range(len(CLASS_NAMES))
+        }
         
-        predicted_class = CLASS_NAMES[predicted_class_idx]
+        predicted_class = analysis['predicted_label']
+        confidence = analysis['confidence']
         
-        # Save file
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_filename = f"{timestamp}_{filename}"
         
-        # Upload to Supabase Storage and save to database
         if db is not None:
             try:
-                # Upload image to Supabase Storage
                 db.upload_image(image_bytes, unique_filename)
                 print(f"Image uploaded to Supabase Storage: {unique_filename}")
                 
-                # Save prediction to database (without image_url)
                 db.save_prediction(unique_filename, predicted_class, confidence)
                 
-                # Get image URL from filename
                 image_url = db.get_image_url(unique_filename)
             except Exception as e:
                 print(f"Warning: Could not save to Supabase: {e}")
-                # Fallback to local storage if Supabase fails
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
                 with open(filepath, 'wb') as f:
                     f.write(image_bytes)
                 image_url = None
         else:
-            # Save to local storage if database not connected
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
             with open(filepath, 'wb') as f:
                 f.write(image_bytes)
             image_url = None
         
-        # Return response
         return jsonify({
             'success': True,
             'filename': unique_filename,
             'predicted_class': predicted_class,
             'confidence': confidence,
             'all_probabilities': class_probabilities,
+            'decision_details': analysis,
             'image_url': image_url,  # Include Supabase Storage URL constructed from filename
             'timestamp': datetime.now().isoformat()
         })
@@ -307,64 +314,50 @@ def predict_live():
     Expected: multipart/form-data with 'image' field
     Returns: JSON with predicted class and confidence
     """
-    # Check if model is loaded
     if model is None:
         return jsonify({
             'error': 'Model not loaded. Please train the model first.'
         }), 503
     
-    # Check if image is in request
     if 'image' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
     
     file = request.files['image']
     
-    # Check if file is selected
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
     try:
-        # Read and preprocess image
         image_bytes = file.read()
         processed_image = preprocess_image(image_bytes)
         
-        # Make prediction based on model type
         if model_type == 'keras':
             predictions = model.predict(processed_image, verbose=0)
-            predicted_class_idx = np.argmax(predictions[0])
-            confidence = float(predictions[0][predicted_class_idx])
-            
-            # Get all class probabilities
-            class_probabilities = {
-                CLASS_NAMES[i]: float(predictions[0][i])
-                for i in range(len(CLASS_NAMES))
-            }
-            
+            probabilities = predictions[0]
         elif model_type == 'pytorch':
             import torch
             
             with torch.no_grad():
                 outputs = model(processed_image)
-                
-                # Apply softmax to get probabilities
-                probabilities = torch.nn.functional.softmax(outputs, dim=1)
-                predicted_class_idx = torch.argmax(probabilities, dim=1).item()
-                confidence = float(probabilities[0][predicted_class_idx])
-                
-                # Get all class probabilities
-                class_probabilities = {
-                    CLASS_NAMES[i]: float(probabilities[0][i])
-                    for i in range(len(CLASS_NAMES))
-                }
+                probabilities = torch.nn.functional.softmax(outputs, dim=1)[0].cpu().numpy()
+        else:
+            return jsonify({'error': 'Unsupported model type'}), 500
+
+        analysis = analyze_probabilities(probabilities)
+        class_probabilities = {
+            CLASS_NAMES[i]: float(probabilities[i])
+            for i in range(len(CLASS_NAMES))
+        }
         
-        predicted_class = CLASS_NAMES[predicted_class_idx]
+        predicted_class = analysis['predicted_label']
+        confidence = analysis['confidence']
         
-        # Return response without saving to database
         return jsonify({
             'success': True,
             'predicted_class': predicted_class,
             'confidence': confidence,
             'all_probabilities': class_probabilities,
+            'decision_details': analysis,
             'timestamp': datetime.now().isoformat()
         })
     
@@ -385,7 +378,6 @@ def get_history():
         limit = request.args.get('limit', 100, type=int)
         predictions = db.get_all_predictions(limit=limit)
         
-        # Add image URLs for each prediction using the filename
         for prediction in predictions:
             if 'filename' in prediction:
                 prediction['image_url'] = db.get_image_url(prediction['filename'])
@@ -455,18 +447,15 @@ def main():
     print("ROBOT VS HUMAN CLASSIFIER - API SERVER")
     print("="*60)
     
-    # Load model
     model_loaded = load_model()
     if not model_loaded:
         print("\n⚠ WARNING: Starting server without model!")
         print("Train the model first: python model/train.py")
     
-    # Initialize database
     db_connected = initialize_database()
     if not db_connected:
         print("\n⚠ WARNING: Starting server without database connection!")
     
-    # Start server
     print("\n" + "="*60)
     print(f"Starting Flask server on http://{FLASK_HOST}:{FLASK_PORT}")
     print("="*60)

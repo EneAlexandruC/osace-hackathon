@@ -1,147 +1,384 @@
-Documentație Proiect: Clasificare Oameni vs Roboți
+# Robot vs Human CNN Classifier
+
+Prototip funcțional de clasificare a imaginilor folosind CNN (Convolutional Neural Network) pentru detectarea roboților vs oameni.
+
+## Quick Start
+
+**Doar două comenzi pentru a porni totul:**
+
+```powershell
+# Terminal 1: Start Flask (API + Frontend)
+python backend/app.py
+
+# Terminal 2: Start ngrok pentru acces remote
+ngrok http 5000
+```
+
+**Apoi deschide URL-ul ngrok în browser!**
+
+Vezi [START_HERE.md](START_HERE.md) pentru detalii complete.
+
+---
+
+## Descriere
+
+Acest proiect implementează un sistem complet de clasificare a imaginilor care include:
+- Model CNN antrenat cu TensorFlow/Keras
+- Transfer learning cu EfficientNet (B0–B3, configurabil) și fine‑tuning pe straturile finale
+- API REST cu Flask pentru predicții
+- Interfață web modernă pentru testare
+- Integrare cu Supabase pentru persistența datelor
+- Augmentare automată a datelor
+- Raportare completă a metricilor (accuracy, loss, precision, recall)
+
+## Model și rezultate
+
+- Backbone EfficientNet-B0 preantrenat pe ImageNet, cu head personalizat (GlobalAveragePooling + Dense 256 + Dropout + Dense softmax).
+- Antrenare executată 15 epoci (straturi EfficientNet înghețate) cu batch 32 și learning-rate 5e-4.
+- Performanțe obținute înainte de etapa de fine-tuning:
+  - **Accuracy set antrenare**: 98.97%
+  - **Accuracy set validare**: 100%
+  - **Accuracy set test**: 99.56% (loss 0.0157, precision = recall = 99.56%)
+- A doua fază (fine-tuning pe ultimele 50 straturi la lr=1e-5) a fost întreruptă din cauza unui fișier JPEG corupt; dataset-ul a fost curățat, iar finalizarea fine-tuning-ului rămâne ca next step.
+- Evoluția metricei de-a lungul epocilor (extrasă din `training_report.json`):
+
+![Evoluție metrice (train vs val)](assets/training_history.png)
+
+Datasetul utilizat pentru această rulare este [Robot Finder – Roboflow Universe](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl), aproximativ ~3.1k imagini împărțite 70/15/15.
 
 
-1.Introducere:
+## Cerințe îndeplinite
 
-Acest proiect are ca obiectiv dezvoltarea unui sistem automat de recunoaștere vizuală capabil să distingă între imagini care conțin oameni și imagini care conțin roboți. Sistemul se bazează pe un model de tip CNN (Convolutional Neural Network) antrenat folosind metoda Transfer Learning cu arhitectura MobileNetV2. Aplicația include o interfață web pentru încărcarea imaginilor și vizualizarea rezultatului în timp real, precum și un backend care salvează predicțiile într-o bază de date Supabase.
+✅ **Dataset**: Robot vs Human (imagini publice) – preluat de la [roboflow.com](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl)  
+✅ **Model CNN**: Transfer learning cu EfficientNet + head custom și fine-tuning configurabil  
+✅ **Preprocesare**: Redimensionare (224x224 implicit), normalizare EfficientNet, augmentare extinsă  
+✅ **Split date**: 70% train, 15% validation, 15% test  
+✅ **Antrenare**: 15 epoci + fine-tuning suplimentar (opțional) cu raportare metrici  
+✅ **Export model**: Format .h5 pentru refolosire  
+✅ **API Flask**: Endpoints pentru predicții, statistici și raportare “unknown” când scorul e sub prag  
+✅ **Persistență**: Salvare automată în Supabase (filename, predicted_class, confidence, timestamp)  
+✅ **Interfață web**: Upload imagini + afișare rezultate în timp real  
 
+## Structura Proiectului
 
-2. Structura Proiectului
-
+```
 osace-hackathon/
 ├── backend/
-│   ├── app.py              # Server Flask (API + UI)
-│   ├── config.py           # Configurații aplicație și model
-│   ├── supabase_db.py      # Operare cu baza de date Supabase
-│   └── uploads/            # Fișiere temporare uploadate
+│   ├── app.py              # Flask API server
+│   ├── config.py           # Configurări (Supabase, model, etc.)
+│   ├── supabase_db.py      # Client Supabase pentru DB
+│   ├── requirements.txt    # Dependențe Python
+│   └── uploads/            # Imagini încărcate
 ├── model/
-│   ├── cnn_model.py        # Definire arhitectură CNN
-│   ├── train.py            # Script pentru antrenarea modelului
-│   ├── prepare_dataset.py  # Script pregătire dataset
-│   └── robot_vs_human_classifier.h5  # Modelul antrenat
+│   ├── cnn_model.py        # Arhitectura CNN
+│   ├── train.py            # Script antrenare
+│   ├── prepare_dataset.py  # Pregătire și split dataset
+│   └── robot_vs_human_classifier.h5  # Model antrenat
 ├── data/
 │   ├── raw/                # Date brute (human/, robot/)
-│   ├── train/              # Date pentru antrenament
-│   ├── val/                # Date pentru validare
-│   └── test/               # Date pentru testare
-└── frontend/
-    └── index.html          # Interfață web
+│   ├── train/              # Date antrenare
+│   ├── val/                # Date validare
+│   └── test/               # Date testare
+├── frontend/
+│   └── index.html          # Interfață web
+└── README.md
+```
 
+## Setup și Instalare
 
+### 1. Prerequisite
 
+- Python 3.8+ instalat
+- pip (Python package manager)
+- Minim 2GB RAM disponibil
+- Conexiune internet pentru descărcare dependențe
 
+### 2. Instalare Dependențe
 
+```powershell
+# Navigați la directorul backend
+cd backend
 
-3. Fluxul Sistemului
+# Instalați dependențele
+pip install -r requirements.txt
+```
 
-1.	Utilizatorul încarcă o imagine prin interfață.
-2.	Backend-ul Flask primește și preprocesează imaginea (resize 224x224, normalizare).
-3.	Modelul CNN returnează predicția (human sau robot) și probabilitatea (confidence).
-4.	Predicția este salvată în Supabase.
-5.	Rezultatul este afișat pe interfața web.
+### 3. Pregătire Dataset
 
+```powershell
+# Navigați la directorul model
+cd ../model
 
+# Rulați scriptul de pregătire
+python prepare_dataset.py
+```
 
-4. Arhitectura Modelului CNN
+**Important**: După rularea scriptului, adăugați imaginile în:
+- `data/raw/human/` - imagini cu oameni
+- `data/raw/robot/` - imagini cu roboți
 
-Modelul folosește MobileNetV2 pre-antrenat pe ImageNet, cu stratul final înlocuit pentru clasificare binară.
+Dataset-ul folosit în experimentul curent provine din:  
+[https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl)
 
-Caracteristici:
+După adăugarea imaginilor, rulați din nou:
+```powershell
+python prepare_dataset.py
+```
 
-•	Input: 224x224x3
-•	Straturi MobileNetV2 înghețate
-•	GlobalAveragePooling2D
-•	Dense (128) + ReLU
-•	Dropout (0.3)
-•	Dense (2) + Softmax
+### 4. Antrenare Model
 
-Parametri antrenare:
+```powershell
+# Antrenează modelul (15 epoci + fine-tuning)
+python train.py
+```
 
-Epoci: 10 
-Batch size: 32 
-Optimizer: Adam
-Loss: Categorial Crossentropy
-Metrici: Accuracy, Precision, Recall
+Acest script va:
+- Încărca datele din `data/train` și `data/val`
+- Antrena modelul CNN
+- Salva modelul în `model/robot_vs_human_classifier.h5`
+- Regenera graficele și rapoartele (`assets/training_history.png`, `training_report.json`)
+- Crea raport JSON (`training_report.json`)
 
-5. API Flask
+**Timp estimat**: 5-30 minute (depinde de dataset și hardware)
 
-Endpoint	Metodă	Descriere
-/api/predict	POST	Primește o imagine și returnează predicția
-/api/history	GET	Returnează ultimele predicții
-/api/statistics	GET	Returnează statistici agregate
-/health	GET	Verifică dacă serverul funcționează
+### 5. Pornire Server API
 
+```powershell
+# Navigați la backend
+cd ../backend
 
-6.Interfața Web
+# Porniți serverul Flask
+python app.py
+```
 
-Interfața din index.html permite:
+Serverul va porni pe `http://localhost:5000`
 
-•	Încărcare imagini (drag & drop)
-•	Afișarea rezultatului predicției
-•	Vizualizarea istoricului și statisticilor
+### 6. Accesare Interfață Web
 
+Deschideți browser-ul la: **http://localhost:5000**
 
+## Utilizare
 
-7. Baza de Date Supabase
+### Interfața Web
 
-Tabel utilizat: classification 
-Coloană	Tip	Descriere
-id	integer	Cheie primară
-filename	text	Numele fișierului
-predicted_class	text	human / robot / unknown
-confidence	float	Încredere model
-User_feedback	text	Feedback-ul userului
-Created_at	timestamp	Moment salvare
-		
-		
-		
-		
-		
-		
-		
-8. Funcționalități ale Aplicației Web
+1. **Upload imagine**: Click pe zona de upload sau drag & drop
+2. **Analizare**: Click pe butonul "Analizează Imaginea"
+3. **Rezultate**: Vezi clasa prezisă (Human/Robot) și încrederea (confidence)
+4. **Statistici**: Monitorizează numărul total de predicții
+5. **Istoric**: Vezi ultimele 10 predicții
 
-Aplicația include o interfață web intuitivă și complet integrată cu API-ul backend și baza de date.
+### API Endpoints
 
-8.1 Încărcare Imagini (Upload)
-•	Utilizatorul poate încărca imagini prin buton sau drag & drop.
-•	Imaginile sunt trimise către API pentru clasificare.
-•	Rezultatul este afișat vizual, alături de scorul de încredere.
+#### POST `/api/predict`
+Predicție pentru o imagine
 
-8.2 Clasificare în Timp Real (Live Camera Feed)
-•	Sistemul permite capturarea de imagini direct din camera web.
-•	Fiecare frame este trimis către server pentru analiză.
-•	Predicțiile sunt afișate live și se salvează în baza de date.
+**Request**: multipart/form-data cu field `image`
 
+**Response**:
+```json
+{
+  "success": true,
+  "filename": "20231108_143022_image.jpg",
+  "predicted_class": "robot",
+  "confidence": 0.95,
+  "all_probabilities": {
+    "human": 0.05,
+    "robot": 0.95
+  },
+  "decision_details": {
+    "best_class": "robot",
+    "best_confidence": 0.95,
+    "second_class": "human",
+    "second_confidence": 0.05,
+    "margin": 0.90,
+    "is_confident": true
+  },
+  "timestamp": "2023-11-08T14:30:22"
+}
+```
 
-8.3 Istoric Predicții
-•	Aplicația afișează lista ultimelor clasări efectuate.
-•	Fiecare intrare conține:
-o	Numele imaginii
-o	Clasa prezisă (Human / Robot)
-o	Probabilitatea asociată
-o	Data și ora
+#### GET `/api/history?limit=10`
+Istoric predicții din Supabase
 
-8.4 Statistici și Vizualizare Date
-•	Afișare număr total de predicții.
-•	Raport între imagini identificate ca Human vs Robot.
-•	Media scorurilor de încredere.
+**Response**:
+```json
+{
+  "success": true,
+  "count": 10,
+  "predictions": [...]
+}
+```
 
-8.5 Persistență în Supabase
-•	Toate predicțiile sunt salvate automat.
-•	Datele pot fi exportate pentru analiză ulterioară.
+#### GET `/api/statistics`
+Statistici generale
 
+**Response**:
+```json
+{
+  "success": true,
+  "statistics": {
+    "total": 156,
+    "humans": 82,
+    "robots": 74,
+    "avg_confidence": 0.87
+  }
+}
+```
 
-9. Concluzii
+#### GET `/api/model-info`
+Informații despre model
 
-Acest proiect prezintă un flux complet de Machine Learning, incluzând:
-•	Pregătirea și organizarea datasetului
-•	Antrenarea modelului prin transfer learning
-•	Dezvoltarea unui API funcțional cu Flask
-•	Realizarea unei interfețe web interactive
-•	Persistență și analiză date prin Supabase
-Proiectul poate fi extins pentru:
-•	Suport pentru stream video în timp real
-•	Clasificare multi-clasă
-•	Integrare cu sisteme IoT
+#### GET `/health`
+Health check pentru server
 
+## Configurare
+
+Toate configurările se află în `backend/config.py`:
+
+- **SUPABASE_URL**: URL-ul bazei de date Supabase
+- **SUPABASE_KEY**: API key pentru Supabase
+- **MODEL_BACKBONE**: EfficientNet utilizat (`efficientnet_b0` implicit, suport B1–B3)
+- **MODEL_INPUT_SIZE**: Dimensiune input imagini (se ajustează automat pentru backbone)
+- **EPOCHS**: Număr epoci antrenare (15)
+- **BATCH_SIZE**: Dimensiune batch (32)
+- **LEARNING_RATE**: Learning rate inițial (0.0005)
+- **FINE_TUNE_AT / FINE_TUNE_EPOCHS**: Control pentru deblocarea ultimelor straturi EfficientNet
+- **PREDICTION_THRESHOLD / PREDICTION_MARGIN**: Praguri pentru a raporta `unknown`
+
+## Metrici și Performance
+
+### Rezumat rulare curentă (15 epoci, EfficientNet-B0)
+
+- **Accuracy train**: 0.9897  
+- **Accuracy val**: 1.0000  
+- **Accuracy test**: 0.9956  
+- **Loss test**: 0.0157  
+- **Precision/Recall test**: 0.9956  
+- **Learning rate schedule**: ReduceLROnPlateau (a scăzut la 2.5e-4 pe final)
+
+Artefacte generate automat:
+- `assets/training_history.png` – evoluția accuracy/loss/precision/recall (train vs val)
+- `training_report.json` – metrici detaliate + hiperparametri
+- `training_history.png` (original din run-ul TensorFlow, dacă a fost generat înainte de oprirea fine-tuning-ului)
+
+## Baza de Date (Supabase)
+
+### Tabel: `predictions`
+
+| Coloană | Tip | Descriere |
+|---------|-----|-----------|
+| id | integer | Primary key (auto) |
+| filename | text | Numele fișierului |
+| predicted_class | text | human sau robot |
+| confidence | float | Încredere (0-1) |
+| timestamp | timestamp | Data și ora predicției |
+
+### Creare tabel (SQL)
+
+```sql
+CREATE TABLE predictions (
+  id SERIAL PRIMARY KEY,
+  filename TEXT NOT NULL,
+  predicted_class TEXT NOT NULL,
+  confidence FLOAT NOT NULL,
+  timestamp TIMESTAMP DEFAULT NOW()
+);
+```
+
+## Testare
+
+### Test conexiune Supabase
+```powershell
+cd backend
+python supabase_db.py
+```
+
+### Test creare model
+```powershell
+cd model
+python cnn_model.py
+```
+
+### Test API
+```powershell
+curl http://localhost:5000/health
+```
+
+## Caracteristici Tehnice
+
+### Model CNN
+- **Arhitectură**: Transfer learning cu EfficientNet (B0 implicit)
+- **Input**: 224x224x3 (RGB) pentru B0 (se ajustează pentru B1/B2/B3)
+- **Output**: 2 clase (softmax)
+- **Layers custom**: Dense layers + Dropout pentru regularization
+- **Optimizer**: Adam cu learning rate 5e-4 (fine-tuning la 1e-5)
+- **Loss**: Categorical crossentropy
+- **Fine-tuning**: Ultimele 50 de straturi EfficientNet deblocate în etapa a doua
+
+### Augmentare Date
+- Random flip (horizontal)
+- Random rotation (±30%)
+- Random zoom (±25%)
+- Random contrast (±30%)
+- Random brightness (±20%)
+
+### Preprocesare
+- Resize la dimensiunea cerută de EfficientNet
+- Normalizare folosind `keras.applications.efficientnet.preprocess_input`
+- Conversie RGB
+
+## Troubleshooting
+
+### Model nu se încarcă
+- Verificați că `model/robot_vs_human_classifier.h5` există
+- Rulați `python model/train.py` pentru a antrena modelul
+
+### Eroare Supabase
+- Verificați conexiunea internet
+- Confirmați API key și URL în `backend/config.py`
+- Verificați că tabelul `predictions` există în Supabase
+
+### Imagini nu apar
+- Verificați că directorul `data/raw/human` și `data/raw/robot` conțin imagini
+- Rulați din nou `python model/prepare_dataset.py`
+
+### Acuratețe scăzută
+- Adăugați mai multe imagini (200+ per clasă)
+- Creșteți numărul de epoci în `config.py`
+- Verificați calitatea imaginilor din dataset
+
+## Tehnologii Utilizate
+
+- **Deep Learning**: TensorFlow 2.15, Keras
+- **Backend**: Flask 3.0, Flask-CORS
+- **Database**: Supabase (PostgreSQL)
+- **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
+- **Image Processing**: Pillow, OpenCV
+- **Visualization**: Matplotlib
+- **Utils**: NumPy, scikit-learn
+
+## Echipa
+
+Proiect dezvoltat pentru OSACE Hackathon
+
+## Licență
+
+Acest proiect este creat în scop educațional pentru OSACE Hackathon.
+
+## Referințe
+
+- TensorFlow Documentation: https://www.tensorflow.org/
+- Keras Applications: https://keras.io/api/applications/
+- MobileNetV2: https://arxiv.org/abs/1801.04381
+- Flask Documentation: https://flask.palletsprojects.com/
+- Supabase Docs: https://supabase.com/docs
+
+---
+
+**Note**: Pentru orice probleme sau întrebări, verificați secțiunea Troubleshooting sau deschideți un issue.
+
+## Acces rapid la aplicație
+
+Scanează QR-ul pentru a deschide interfața web:
+
+![QR code pentru aplicație](assets/QrCode.jpg)

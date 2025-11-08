@@ -9,14 +9,71 @@ from datetime import datetime
 import json
 import sys
 import os
+from pathlib import Path
+from types import SimpleNamespace
 
-# Add parent directory to path
+from PIL import Image, UnidentifiedImageError
+from sklearn.metrics import confusion_matrix, classification_report
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.config import (
-    TRAIN_DIR, VAL_DIR, TEST_DIR, MODEL_PATH, MODEL_INPUT_SIZE,
-    BATCH_SIZE, EPOCHS, LEARNING_RATE, CLASS_NAMES
+    TRAIN_DIR,
+    VAL_DIR,
+    TEST_DIR,
+    MODEL_PATH,
+    MODEL_INPUT_SIZE,
+    BATCH_SIZE,
+    EPOCHS,
+    LEARNING_RATE,
+    CLASS_NAMES,
+    MODEL_BACKBONE,
+    USE_FINE_TUNING,
+    FINE_TUNE_AT,
+    FINE_TUNE_EPOCHS,
+    FINE_TUNE_LEARNING_RATE,
 )
-from model.cnn_model import create_model, get_data_augmentation, get_preprocessing_layers
+from model.cnn_model import (
+    create_model,
+    get_data_augmentation,
+    get_preprocessing_layers,
+    compile_model,
+)
+
+VALID_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif'}
+
+
+def find_corrupt_images(directories):
+    """
+    Scan provided directories for images that Pillow cannot open.
+
+    Args:
+        directories: Iterable of directory paths to scan.
+
+    Returns:
+        List of tuples (path, error_message) for corrupt/unreadable images.
+    """
+    corrupt_files = []
+
+    for directory in directories:
+        directory = Path(directory)
+        if not directory.exists():
+            continue
+
+        for file_path in directory.rglob('*'):
+            if not file_path.is_file():
+                continue
+            if file_path.suffix.lower() not in VALID_IMAGE_EXTENSIONS:
+                continue
+
+            try:
+                with Image.open(file_path) as img:
+                    img.verify()
+                with Image.open(file_path) as img:
+                    img.load()
+            except (UnidentifiedImageError, OSError, ValueError) as exc:
+                corrupt_files.append((file_path, str(exc)))
+
+    return corrupt_files
 
 
 def create_datasets():
@@ -28,7 +85,6 @@ def create_datasets():
     """
     print("Loading datasets...")
     
-    # Training dataset with augmentation
     train_ds = keras.preprocessing.image_dataset_from_directory(
         TRAIN_DIR,
         labels='inferred',
@@ -40,7 +96,6 @@ def create_datasets():
         seed=42
     )
     
-    # Validation dataset (no augmentation)
     val_ds = keras.preprocessing.image_dataset_from_directory(
         VAL_DIR,
         labels='inferred',
@@ -52,7 +107,6 @@ def create_datasets():
         seed=42
     )
     
-    # Test dataset (no augmentation)
     test_ds = keras.preprocessing.image_dataset_from_directory(
         TEST_DIR,
         labels='inferred',
@@ -64,20 +118,16 @@ def create_datasets():
         seed=42
     )
     
-    # Apply preprocessing and augmentation
-    preprocessing = get_preprocessing_layers()
+    preprocessing = get_preprocessing_layers(MODEL_BACKBONE)
     augmentation = get_data_augmentation()
     
-    # Apply to training data
     train_ds = train_ds.map(lambda x, y: (preprocessing(augmentation(x)), y))
     
-    # Apply only preprocessing to val and test
     val_ds = val_ds.map(lambda x, y: (preprocessing(x), y))
     test_ds = test_ds.map(lambda x, y: (preprocessing(x), y))
     
-    # Performance optimization
     AUTOTUNE = tf.data.AUTOTUNE
-    train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
+    train_ds = train_ds.prefetch(buffer_size=AUTOTUNE)
     val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
     test_ds = test_ds.cache().prefetch(buffer_size=AUTOTUNE)
     
@@ -100,7 +150,6 @@ def create_callbacks(model_path):
         List of callbacks
     """
     callbacks = [
-        # Save best model
         keras.callbacks.ModelCheckpoint(
             model_path,
             monitor='val_accuracy',
@@ -109,7 +158,6 @@ def create_callbacks(model_path):
             verbose=1
         ),
         
-        # Early stopping
         keras.callbacks.EarlyStopping(
             monitor='val_loss',
             patience=5,
@@ -117,7 +165,6 @@ def create_callbacks(model_path):
             verbose=1
         ),
         
-        # Reduce learning rate on plateau
         keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.5,
@@ -126,7 +173,6 @@ def create_callbacks(model_path):
             verbose=1
         ),
         
-        # TensorBoard logging
         keras.callbacks.TensorBoard(
             log_dir=f'logs/fit/{datetime.now().strftime("%Y%m%d-%H%M%S")}',
             histogram_freq=1
@@ -146,38 +192,34 @@ def plot_training_history(history, save_path='training_history.png'):
     """
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
     
-    # Accuracy
-    axes[0, 0].plot(history.history['accuracy'], label='Train Accuracy', linewidth=2)
-    axes[0, 0].plot(history.history['val_accuracy'], label='Val Accuracy', linewidth=2)
+    axes[0, 0].plot(history.history.get('accuracy', []), label='Train Accuracy', linewidth=2)
+    axes[0, 0].plot(history.history.get('val_accuracy', []), label='Val Accuracy', linewidth=2)
     axes[0, 0].set_title('Model Accuracy', fontsize=14, fontweight='bold')
     axes[0, 0].set_xlabel('Epoch')
     axes[0, 0].set_ylabel('Accuracy')
     axes[0, 0].legend()
     axes[0, 0].grid(True, alpha=0.3)
     
-    # Loss
-    axes[0, 1].plot(history.history['loss'], label='Train Loss', linewidth=2)
-    axes[0, 1].plot(history.history['val_loss'], label='Val Loss', linewidth=2)
+    axes[0, 1].plot(history.history.get('loss', []), label='Train Loss', linewidth=2)
+    axes[0, 1].plot(history.history.get('val_loss', []), label='Val Loss', linewidth=2)
     axes[0, 1].set_title('Model Loss', fontsize=14, fontweight='bold')
     axes[0, 1].set_xlabel('Epoch')
     axes[0, 1].set_ylabel('Loss')
     axes[0, 1].legend()
     axes[0, 1].grid(True, alpha=0.3)
     
-    # Precision
     if 'precision' in history.history:
         axes[1, 0].plot(history.history['precision'], label='Train Precision', linewidth=2)
-        axes[1, 0].plot(history.history['val_precision'], label='Val Precision', linewidth=2)
+        axes[1, 0].plot(history.history.get('val_precision', []), label='Val Precision', linewidth=2)
         axes[1, 0].set_title('Model Precision', fontsize=14, fontweight='bold')
         axes[1, 0].set_xlabel('Epoch')
         axes[1, 0].set_ylabel('Precision')
         axes[1, 0].legend()
         axes[1, 0].grid(True, alpha=0.3)
     
-    # Recall
     if 'recall' in history.history:
         axes[1, 1].plot(history.history['recall'], label='Train Recall', linewidth=2)
-        axes[1, 1].plot(history.history['val_recall'], label='Val Recall', linewidth=2)
+        axes[1, 1].plot(history.history.get('val_recall', []), label='Val Recall', linewidth=2)
         axes[1, 1].set_title('Model Recall', fontsize=14, fontweight='bold')
         axes[1, 1].set_xlabel('Epoch')
         axes[1, 1].set_ylabel('Recall')
@@ -241,7 +283,11 @@ def save_training_report(history, test_metrics, save_path='training_report.json'
             'batch_size': BATCH_SIZE,
             'learning_rate': LEARNING_RATE,
             'input_size': list(MODEL_INPUT_SIZE),
-            'classes': CLASS_NAMES
+            'classes': CLASS_NAMES,
+            'use_fine_tuning': USE_FINE_TUNING,
+            'fine_tune_at': FINE_TUNE_AT,
+            'fine_tune_epochs': FINE_TUNE_EPOCHS,
+            'fine_tune_learning_rate': FINE_TUNE_LEARNING_RATE,
         },
         'training_history': {
             key: [float(val) for val in values]
@@ -249,8 +295,8 @@ def save_training_report(history, test_metrics, save_path='training_report.json'
         },
         'test_metrics': test_metrics,
         'final_metrics': {
-            'train_accuracy': float(history.history['accuracy'][-1]),
-            'val_accuracy': float(history.history['val_accuracy'][-1]),
+            'train_accuracy': float(history.history.get('accuracy', [0])[-1]),
+            'val_accuracy': float(history.history.get('val_accuracy', [0])[-1]),
             'test_accuracy': test_metrics['test_accuracy']
         }
     }
@@ -261,30 +307,91 @@ def save_training_report(history, test_metrics, save_path='training_report.json'
     print(f"✓ Training report saved to: {save_path}")
 
 
+def generate_evaluation_artifacts(model, test_ds, class_names, cm_path, report_path):
+    """
+    Generate confusion matrix plot and classification report.
+    """
+    print("\nGenerating evaluation artifacts...")
+    y_true = []
+    y_pred = []
+
+    for batch_images, batch_labels in test_ds:
+        preds = model.predict(batch_images, verbose=0)
+        y_pred.extend(np.argmax(preds, axis=1))
+        y_true.extend(np.argmax(batch_labels.numpy(), axis=1))
+
+    cm = confusion_matrix(y_true, y_pred)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    ax.figure.colorbar(im, ax=ax)
+    tick_marks = np.arange(len(class_names))
+    ax.set_xticks(tick_marks)
+    ax.set_yticks(tick_marks)
+    ax.set_xticklabels(class_names)
+    ax.set_yticklabels(class_names)
+    ax.set_ylabel('True label')
+    ax.set_xlabel('Predicted label')
+    ax.set_title('Confusion Matrix')
+
+    thresh = cm.max() / 2.0 if cm.size else 0
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(
+                j, i, format(cm[i, j], 'd'),
+                ha='center', va='center',
+                color='white' if cm[i, j] > thresh else 'black'
+            )
+
+    plt.tight_layout()
+    plt.savefig(cm_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Confusion matrix saved to: {cm_path}")
+
+    report = classification_report(
+        y_true,
+        y_pred,
+        target_names=class_names,
+        digits=4
+    )
+    with open(report_path, 'w') as f:
+        f.write(report)
+    print(f"✓ Classification report saved to: {report_path}")
+
+
 def main():
     """Main training function"""
     print("\n" + "="*60)
     print("ROBOT VS HUMAN CNN CLASSIFIER - TRAINING")
     print("="*60)
     
-    # Check if data exists
     if not TRAIN_DIR.exists() or not list(TRAIN_DIR.glob('*/*')):
         print("\n⚠ ERROR: Training data not found!")
         print(f"Please run prepare_dataset.py first to set up the data.")
         print(f"Expected location: {TRAIN_DIR}")
         return
     
-    # Create datasets
+    corrupt_images = find_corrupt_images([TRAIN_DIR, VAL_DIR, TEST_DIR])
+    if corrupt_images:
+        print("\n⚠ ERROR: Found unreadable image files:")
+        for file_path, error in corrupt_images[:10]:
+            print(f"  - {file_path}: {error}")
+        if len(corrupt_images) > 10:
+            print(f"  ...and {len(corrupt_images) - 10} more.")
+        print("\nPlease remove or replace the corrupt files and rerun the training.")
+        return
+
     train_ds, val_ds, test_ds = create_datasets()
     
-    # Create model
     print("\n" + "="*60)
-    model = create_model(model_type='transfer_learning', learning_rate=LEARNING_RATE)
+    model = create_model(
+        model_type='transfer_learning',
+        learning_rate=LEARNING_RATE,
+        backbone=MODEL_BACKBONE,
+    )
     
-    # Create callbacks
     callbacks = create_callbacks(str(MODEL_PATH))
     
-    # Train model
     print("\n" + "="*60)
     print("STARTING TRAINING")
     print("="*60)
@@ -300,25 +407,78 @@ def main():
         callbacks=callbacks,
         verbose=1
     )
-    
-    # Plot training history
-    plot_training_history(history, 'training_history.png')
-    
-    # Evaluate on test set
+
+    histories = [history]
+
+    if USE_FINE_TUNING and hasattr(model, "base_model"):
+        print("\n" + "="*60)
+        print("STARTING FINE-TUNING")
+        print("="*60)
+
+        base_model = model.base_model
+        total_layers = len(base_model.layers)
+
+        if FINE_TUNE_AT is None:
+            fine_tune_start = 0
+        elif FINE_TUNE_AT < 0:
+            fine_tune_start = max(0, total_layers + FINE_TUNE_AT)
+        else:
+            fine_tune_start = min(total_layers, FINE_TUNE_AT)
+
+        for layer in base_model.layers[:fine_tune_start]:
+            layer.trainable = False
+        for layer in base_model.layers[fine_tune_start:]:
+            layer.trainable = True
+
+        print(f"✓ Unfroze layers from index {fine_tune_start} (total layers: {total_layers})")
+        print(f"Fine-tuning for {FINE_TUNE_EPOCHS} epochs at lr={FINE_TUNE_LEARNING_RATE}")
+
+        model = compile_model(model, FINE_TUNE_LEARNING_RATE)
+        fine_tune_callbacks = create_callbacks(str(MODEL_PATH))
+
+        fine_tune_history = model.fit(
+            train_ds,
+            validation_data=val_ds,
+            epochs=EPOCHS + FINE_TUNE_EPOCHS,
+            initial_epoch=EPOCHS,
+            callbacks=fine_tune_callbacks,
+            verbose=1
+        )
+
+        histories.append(fine_tune_history)
+
+    combined_history_dict = {}
+    for hist in histories:
+        for key, values in hist.history.items():
+            combined_history_dict.setdefault(key, [])
+            combined_history_dict[key].extend(values)
+
+    combined_history = SimpleNamespace(history=combined_history_dict)
+
+    plot_training_history(combined_history, 'training_history.png')
+
     test_metrics = evaluate_model(model, test_ds)
-    
-    # Save training report
-    save_training_report(history, test_metrics, 'training_report.json')
-    
+
+    generate_evaluation_artifacts(
+        model,
+        test_ds,
+        CLASS_NAMES,
+        cm_path='confusion_matrix.png',
+        report_path='classification_report.txt'
+    )
+
+    save_training_report(combined_history, test_metrics, 'training_report.json')
+
     print("\n" + "="*60)
     print("TRAINING COMPLETED!")
     print("="*60)
     print(f"Model saved to: {MODEL_PATH}")
     print(f"Training history plot: training_history.png")
+    print(f"Confusion matrix: confusion_matrix.png")
+    print(f"Classification report: classification_report.txt")
     print(f"Training report: training_report.json")
     print("="*60 + "\n")
-    
-    # Check if accuracy goal is met
+
     if test_metrics['test_accuracy'] >= 0.90:
         print("✓ SUCCESS: Achieved >90% accuracy!")
     else:

@@ -6,7 +6,6 @@ from datetime import datetime
 import sys
 import os
 
-# Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import SUPABASE_URL, SUPABASE_KEY, SUPABASE_TABLE, SUPABASE_BUCKET
 
@@ -29,14 +28,12 @@ class SupabaseDB:
             The public URL of the uploaded image
         """
         try:
-            # Upload to Supabase Storage
             self.client.storage.from_(self.bucket).upload(
                 path=filename,
                 file=file_bytes,
                 file_options={"content-type": "image/jpeg"}
             )
             
-            # Get public URL
             public_url = self.client.storage.from_(self.bucket).get_public_url(filename)
             print(f"✓ Image uploaded to Supabase Storage: {filename}")
             return public_url
@@ -143,11 +140,9 @@ class SupabaseDB:
 
 
 if __name__ == "__main__":
-    # Test the connection
     db = SupabaseDB()
     print("✓ Supabase connection successful!")
     
-    # Test saving a prediction
     test_result = db.save_prediction(
         filename="test_image.jpg",
         predicted_class="robot",
@@ -155,6 +150,5 @@ if __name__ == "__main__":
     )
     print(f"Test prediction saved: {test_result}")
     
-    # Get statistics
     stats = db.get_statistics()
     print(f"Database statistics: {stats}")
