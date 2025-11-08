@@ -255,6 +255,121 @@
                 <p class="text-gray-400 text-base sm:text-lg px-4">No classifications yet</p>
             </div>
         </div>
+
+        <!-- Live Feed Section -->
+        <div class="glass rounded-3xl p-4 sm:p-8 mt-6 sm:mt-8 animate-slide-up">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-6">
+                <h2 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                    <span class="text-3xl sm:text-4xl">🎥</span> 
+                    <span>Live Feed Detection</span>
+                </h2>
+                <div class="flex gap-3 w-full sm:w-auto">
+                    <button id="start-live-btn" onclick="startLiveFeed()" 
+                            class="flex-1 sm:flex-none bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
+                        <span class="text-xl sm:text-base">▶️</span>
+                        <span>Start</span>
+                    </button>
+                    <button id="stop-live-btn" onclick="stopLiveFeed()" disabled
+                            class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                        <span class="text-xl sm:text-base">⏹️</span>
+                        <span>Stop</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Feed Controls -->
+            <div class="mb-4 sm:mb-6 bg-snapchat-gray rounded-2xl p-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-white text-sm font-semibold mb-2 block">
+                            Detection Interval (ms)
+                        </label>
+                        <input type="range" id="live-interval" min="100" max="2000" value="500" step="100"
+                               class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                               oninput="updateLiveInterval(this.value)">
+                        <div class="text-snapchat-yellow text-sm mt-1 font-semibold">
+                            <span id="interval-display">500</span> ms
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-white text-sm font-semibold mb-2 block">
+                            Confidence Threshold
+                        </label>
+                        <input type="range" id="confidence-threshold" min="0" max="100" value="50" step="5"
+                               class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                               oninput="updateConfidenceThreshold(this.value)">
+                        <div class="text-snapchat-yellow text-sm mt-1 font-semibold">
+                            <span id="threshold-display">50</span>%
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Feed Display -->
+            <div class="grid lg:grid-cols-2 gap-4 sm:gap-6">
+                <!-- Video Feed -->
+                <div class="relative">
+                    <video id="live-feed-preview" autoplay playsinline class="w-full rounded-2xl bg-black"></video>
+                    <canvas id="live-feed-canvas" class="hidden"></canvas>
+                    
+                    <!-- Status Overlay -->
+                    <div id="live-status" class="absolute top-4 left-4 right-4 flex justify-between items-start">
+                        <div class="bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl text-white font-semibold flex items-center gap-2">
+                            <div id="live-status-indicator" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                            <span id="live-status-text">Ready</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <!-- Camera Switch Button -->
+                            <button id="switch-live-camera-btn" onclick="switchLiveCamera()" disabled
+                                    class="bg-black/70 backdrop-blur-sm hover:bg-black/90 text-white rounded-xl px-4 py-2 font-semibold transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                <span class="text-xl">🔄</span>
+                                <span class="hidden sm:inline">Flip</span>
+                            </button>
+                            <div class="bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl text-snapchat-yellow font-bold">
+                                <span id="live-fps-counter">0</span> FPS
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prediction Overlay -->
+                    <div id="live-prediction-overlay" class="hidden absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-2xl p-4 border-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-2xl sm:text-3xl font-black" id="live-result-class"></span>
+                            <span class="text-xl sm:text-2xl font-bold" id="live-result-confidence"></span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div id="live-confidence-bar" class="h-full rounded-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Statistics -->
+                <div class="bg-snapchat-gray rounded-2xl p-4 sm:p-6">
+                    <h3 class="text-white font-bold mb-4 text-lg">Live Statistics</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Frames Processed:</span>
+                            <span class="text-white font-bold text-xl" id="frames-processed">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Average Response:</span>
+                            <span class="text-white font-bold text-xl" id="avg-response">0ms</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Last Detection:</span>
+                            <span class="text-white font-bold text-xl" id="last-detection">-</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-6 border-t border-gray-700">
+                        <h4 class="text-white font-bold mb-3">Detection History</h4>
+                        <div id="live-detection-history" class="space-y-2 max-h-48 overflow-y-auto">
+                            <p class="text-gray-400 text-sm text-center py-4">Start live feed to see detections</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Camera Modal -->
@@ -624,6 +739,298 @@
             document.getElementById('image-modal').classList.add('hidden');
         }
 
+        // Live Feed Detection System
+        let liveFeedStream = null;
+        let liveFeedInterval = null;
+        let isLiveFeedRunning = false;
+        let liveDetectionInterval = 500; // milliseconds
+        let confidenceThreshold = 50; // percentage
+        let framesProcessed = 0;
+        let totalResponseTime = 0;
+        let detectionHistory = [];
+        let lastFrameTime = 0;
+        let fpsCounter = 0;
+        let fpsInterval = null;
+        let liveFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+
+        async function startLiveFeed() {
+            if (isLiveFeedRunning) return;
+
+            try {
+                // Get video element
+                const videoElement = document.getElementById('live-feed-preview');
+                
+                // Request camera access
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: liveFacingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                liveFeedStream = stream;
+                videoElement.srcObject = stream;
+                isLiveFeedRunning = true;
+
+                // Update UI
+                document.getElementById('start-live-btn').disabled = true;
+                document.getElementById('stop-live-btn').disabled = false;
+                document.getElementById('switch-live-camera-btn').disabled = false;
+                document.getElementById('live-status-text').textContent = 'Running';
+                document.getElementById('live-status-indicator').className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+                
+                // Reset statistics
+                framesProcessed = 0;
+                totalResponseTime = 0;
+                detectionHistory = [];
+                updateLiveStatistics();
+
+                // Start FPS counter
+                fpsInterval = setInterval(updateFPS, 1000);
+
+                // Start continuous detection
+                liveFeedInterval = setInterval(captureAndPredict, liveDetectionInterval);
+                
+                showToast('Live feed started! 🎥', 'success');
+            } catch (error) {
+                showToast('Failed to access camera: ' + error.message, 'error');
+                console.error('Camera error:', error);
+                stopLiveFeed();
+            }
+        }
+
+        function stopLiveFeed() {
+            if (!isLiveFeedRunning) return;
+
+            // Stop intervals
+            if (liveFeedInterval) {
+                clearInterval(liveFeedInterval);
+                liveFeedInterval = null;
+            }
+            if (fpsInterval) {
+                clearInterval(fpsInterval);
+                fpsInterval = null;
+            }
+
+            // Stop camera stream
+            if (liveFeedStream) {
+                liveFeedStream.getTracks().forEach(track => track.stop());
+                liveFeedStream = null;
+            }
+
+            // Reset video element
+            const videoElement = document.getElementById('live-feed-preview');
+            videoElement.srcObject = null;
+
+            isLiveFeedRunning = false;
+
+            // Update UI
+            document.getElementById('start-live-btn').disabled = false;
+            document.getElementById('stop-live-btn').disabled = true;
+            document.getElementById('switch-live-camera-btn').disabled = true;
+            document.getElementById('live-status-text').textContent = 'Stopped';
+            document.getElementById('live-status-indicator').className = 'w-3 h-3 rounded-full bg-red-500';
+            document.getElementById('live-prediction-overlay').classList.add('hidden');
+            document.getElementById('live-fps-counter').textContent = '0';
+            
+            showToast('Live feed stopped', 'info');
+        }
+
+        async function switchLiveCamera() {
+            if (!isLiveFeedRunning) return;
+
+            try {
+                // Toggle facing mode
+                liveFacingMode = liveFacingMode === 'user' ? 'environment' : 'user';
+                
+                // Stop current stream
+                if (liveFeedStream) {
+                    liveFeedStream.getTracks().forEach(track => track.stop());
+                }
+
+                // Get video element
+                const videoElement = document.getElementById('live-feed-preview');
+                
+                // Request new camera
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: liveFacingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                liveFeedStream = stream;
+                videoElement.srcObject = stream;
+                
+                const cameraName = liveFacingMode === 'user' ? 'front' : 'back';
+                showToast(`Switched to ${cameraName} camera 📷`, 'success');
+                
+            } catch (error) {
+                showToast('Failed to switch camera: ' + error.message, 'error');
+                console.error('Camera switch error:', error);
+                
+                // Revert facing mode on error
+                liveFacingMode = liveFacingMode === 'user' ? 'environment' : 'user';
+            }
+        }
+
+        async function captureAndPredict() {
+            if (!isLiveFeedRunning) return;
+
+            const video = document.getElementById('live-feed-preview');
+            const canvas = document.getElementById('live-feed-canvas');
+            
+            if (!video || !canvas || video.readyState !== 4) {
+                return;
+            }
+            
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // Draw current frame
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to blob
+            canvas.toBlob(async (blob) => {
+                if (!blob || !isLiveFeedRunning) return;
+                
+                const startTime = Date.now();
+                
+                try {
+                    // Create form data
+                    const formData = new FormData();
+                    formData.append('image', blob, 'live_frame.jpg');
+                    
+                    // Send to API
+                    const response = await fetch(`${API_URL}/api/predict-live`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'ngrok-skip-browser-warning': 'true'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const responseTime = Date.now() - startTime;
+                        framesProcessed++;
+                        totalResponseTime += responseTime;
+                        fpsCounter++;
+                        
+                        // Update prediction overlay
+                        updateLivePredictionOverlay(data);
+                        
+                        // Add to history
+                        addToDetectionHistory(data);
+                        
+                        // Update statistics
+                        updateLiveStatistics();
+                    }
+                } catch (error) {
+                    console.error('Live prediction error:', error);
+                }
+            }, 'image/jpeg', 0.85);
+        }
+
+        function updateLivePredictionOverlay(data) {
+            const overlay = document.getElementById('live-prediction-overlay');
+            const confidence = (data.confidence * 100);
+            
+            // Only show if above threshold
+            if (confidence >= confidenceThreshold) {
+                overlay.classList.remove('hidden');
+                
+                const classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
+                const className = data.predicted_class.toLowerCase() === 'robot' ? 'Robot' : 'Human';
+                const color = data.predicted_class.toLowerCase() === 'robot' ? 'border-purple-500' : 'border-blue-500';
+                const bgColor = data.predicted_class.toLowerCase() === 'robot' ? 'bg-purple-500' : 'bg-blue-500';
+                
+                overlay.className = `absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-2xl p-4 border-2 ${color}`;
+                document.getElementById('live-result-class').textContent = `${classEmoji} ${className.toUpperCase()}`;
+                document.getElementById('live-result-class').className = `text-2xl sm:text-3xl font-black ${data.predicted_class.toLowerCase() === 'robot' ? 'text-purple-400' : 'text-blue-400'}`;
+                document.getElementById('live-result-confidence').textContent = `${confidence.toFixed(1)}%`;
+                document.getElementById('live-result-confidence').className = `text-xl sm:text-2xl font-bold ${data.predicted_class.toLowerCase() === 'robot' ? 'text-purple-400' : 'text-blue-400'}`;
+                
+                const confidenceBar = document.getElementById('live-confidence-bar');
+                confidenceBar.style.width = `${confidence}%`;
+                confidenceBar.className = `h-full rounded-full transition-all duration-300 ${bgColor}`;
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function addToDetectionHistory(data) {
+            const confidence = (data.confidence * 100);
+            if (confidence < confidenceThreshold) return;
+            
+            const classEmoji = data.predicted_class.toLowerCase() === 'robot' ? '🤖' : '👤';
+            const time = new Date().toLocaleTimeString();
+            
+            detectionHistory.unshift({
+                class: data.predicted_class,
+                confidence: confidence,
+                time: time,
+                emoji: classEmoji
+            });
+            
+            // Keep only last 10
+            if (detectionHistory.length > 10) {
+                detectionHistory = detectionHistory.slice(0, 10);
+            }
+            
+            // Update UI
+            const historyContainer = document.getElementById('live-detection-history');
+            historyContainer.innerHTML = detectionHistory.map(item => `
+                <div class="flex items-center justify-between bg-black/30 rounded-lg px-3 py-2 text-sm">
+                    <span class="flex items-center gap-2">
+                        <span class="text-xl">${item.emoji}</span>
+                        <span class="text-white font-semibold">${item.class}</span>
+                    </span>
+                    <span class="text-gray-400">${item.confidence.toFixed(1)}%</span>
+                    <span class="text-gray-500 text-xs">${item.time}</span>
+                </div>
+            `).join('');
+        }
+
+        function updateLiveStatistics() {
+            document.getElementById('frames-processed').textContent = framesProcessed;
+            
+            if (framesProcessed > 0) {
+                const avgResponse = Math.round(totalResponseTime / framesProcessed);
+                document.getElementById('avg-response').textContent = `${avgResponse}ms`;
+            }
+            
+            if (detectionHistory.length > 0) {
+                const lastDet = detectionHistory[0];
+                document.getElementById('last-detection').textContent = `${lastDet.emoji} ${lastDet.class}`;
+            }
+        }
+
+        function updateFPS() {
+            document.getElementById('live-fps-counter').textContent = fpsCounter;
+            fpsCounter = 0;
+        }
+
+        function updateLiveInterval(value) {
+            liveDetectionInterval = parseInt(value);
+            document.getElementById('interval-display').textContent = value;
+            
+            // Restart interval if running
+            if (isLiveFeedRunning && liveFeedInterval) {
+                clearInterval(liveFeedInterval);
+                liveFeedInterval = setInterval(captureAndPredict, liveDetectionInterval);
+            }
+        }
+
+        function updateConfidenceThreshold(value) {
+            confidenceThreshold = parseInt(value);
+            document.getElementById('threshold-display').textContent = value;
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadHistory();
@@ -635,6 +1042,9 @@
             if (e.key === 'Escape') {
                 closeCameraModal();
                 closeImageModal();
+                if (isLiveFeedRunning) {
+                    stopLiveFeed();
+                }
             }
         });
     </script>

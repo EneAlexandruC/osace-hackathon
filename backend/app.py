@@ -299,6 +299,82 @@ def predict():
         }), 500
 
 
+@app.route('/api/predict-live', methods=['POST'])
+def predict_live():
+    """
+    Predict image class for live feed (no database save, faster response)
+    
+    Expected: multipart/form-data with 'image' field
+    Returns: JSON with predicted class and confidence
+    """
+    # Check if model is loaded
+    if model is None:
+        return jsonify({
+            'error': 'Model not loaded. Please train the model first.'
+        }), 503
+    
+    # Check if image is in request
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided'}), 400
+    
+    file = request.files['image']
+    
+    # Check if file is selected
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    try:
+        # Read and preprocess image
+        image_bytes = file.read()
+        processed_image = preprocess_image(image_bytes)
+        
+        # Make prediction based on model type
+        if model_type == 'keras':
+            predictions = model.predict(processed_image, verbose=0)
+            predicted_class_idx = np.argmax(predictions[0])
+            confidence = float(predictions[0][predicted_class_idx])
+            
+            # Get all class probabilities
+            class_probabilities = {
+                CLASS_NAMES[i]: float(predictions[0][i])
+                for i in range(len(CLASS_NAMES))
+            }
+            
+        elif model_type == 'pytorch':
+            import torch
+            
+            with torch.no_grad():
+                outputs = model(processed_image)
+                
+                # Apply softmax to get probabilities
+                probabilities = torch.nn.functional.softmax(outputs, dim=1)
+                predicted_class_idx = torch.argmax(probabilities, dim=1).item()
+                confidence = float(probabilities[0][predicted_class_idx])
+                
+                # Get all class probabilities
+                class_probabilities = {
+                    CLASS_NAMES[i]: float(probabilities[0][i])
+                    for i in range(len(CLASS_NAMES))
+                }
+        
+        predicted_class = CLASS_NAMES[predicted_class_idx]
+        
+        # Return response without saving to database
+        return jsonify({
+            'success': True,
+            'predicted_class': predicted_class,
+            'confidence': confidence,
+            'all_probabilities': class_probabilities,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        print(f"Error during live prediction: {e}")
+        return jsonify({
+            'error': f'Prediction failed: {str(e)}'
+        }), 500
+
+
 @app.route('/api/history', methods=['GET'])
 def get_history():
     """Get prediction history from database"""
@@ -398,6 +474,7 @@ def main():
     print("  GET  /                    - Main web interface")
     print("  GET  /health              - Health check")
     print("  POST /api/predict         - Make prediction")
+    print("  POST /api/predict-live    - Make live feed prediction (no DB save)")
     print("  GET  /api/history         - Get prediction history")
     print("  GET  /api/statistics      - Get statistics")
     print("  GET  /api/model-info      - Get model information")
