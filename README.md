@@ -115,6 +115,7 @@ python prepare_dataset.py
 
 Dataset-ul folosit în experimentul curent provine din:  
 [https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl)
+La acest dataset au fost adaugate și aproximativ 200 poze(human+robot) din drive-ul Osace Hackathon
 
 După adăugarea imaginilor, rulați din nou:
 ```powershell
@@ -367,11 +368,9 @@ Acest proiect este creat în scop educațional pentru OSACE Hackathon.
 - Supabase Docs: https://supabase.com/docs
 
 ---
-
-**Note**: Pentru orice probleme sau întrebări, verificați secțiunea Troubleshooting sau deschideți un issue.
-
 ## Acces rapid la aplicație
 
 Scanează QR-ul pentru a deschide interfața web:
+Atenție! Pentru ca aplicația să funcționeze trebuie ca serverul să fie pornit. În această clipă serverul este laptop-ul lui Alex.
 
 ![QR code pentru aplicație](assets/QrCode.jpg)
