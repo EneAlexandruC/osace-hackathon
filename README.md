@@ -37,7 +37,8 @@ Acest proiect implementează un sistem complet de clasificare a imaginilor care 
   - **Accuracy set antrenare**: 98.97%
   - **Accuracy set validare**: 100%
   - **Accuracy set test**: 99.56% (loss 0.0157, precision = recall = 99.56%)
-- A doua fază (fine-tuning pe ultimele 50 straturi la lr=1e-5) a fost întreruptă din cauza unui fișier JPEG corupt; dataset-ul a fost curățat, iar finalizarea fine-tuning-ului rămâne ca next step.
+
+- A doua fază (fine-tuning pe ultimele 50 straturi la lr=1e-5) a mai adăugat 10 epoci.
 - Evoluția metricei de-a lungul epocilor (extrasă din `training_report.json`):
 
 Datasetul utilizat pentru această rulare este [Robot Finder – Roboflow Universe](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl), aproximativ ~1.5k imagini împărțite 70/15/15. + aprox. 200 poze adăugate de noi.
@@ -242,19 +243,6 @@ Toate configurările se află în `backend/config.py`:
 - **FINE_TUNE_AT / FINE_TUNE_EPOCHS**: Control pentru deblocarea ultimelor straturi EfficientNet
 - **PREDICTION_THRESHOLD / PREDICTION_MARGIN**: Praguri pentru a raporta `unknown`
 
-## Metrici și Performance
-
-### Rezumat rulare curentă (15 epoci, EfficientNet-B0)
-
-- **Accuracy train**: 0.9897  
-- **Accuracy val**: 1.0000  
-- **Accuracy test**: 0.9956  
-- **Loss test**: 0.0157  
-- **Precision/Recall test**: 0.9956  
-- **Learning rate schedule**: ReduceLROnPlateau (a scăzut la 2.5e-4 pe final)
-
-- `assets/training_history.png` – evoluția accuracy/loss/precision/recall (train vs val)
-
 ## Baza de Date (Supabase)
 
 ### Tabel: `predictions`
@@ -376,3 +364,4 @@ Scanează QR-ul pentru a deschide interfața web:
 
 
 Atenție! Pentru ca aplicația să funcționeze trebuie ca serverul să fie pornit. În această clipă serverul este laptop-ul lui Alex.
+
