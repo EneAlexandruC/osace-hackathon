@@ -40,7 +40,7 @@ Acest proiect implementează un sistem complet de clasificare a imaginilor care 
 - A doua fază (fine-tuning pe ultimele 50 straturi la lr=1e-5) a fost întreruptă din cauza unui fișier JPEG corupt; dataset-ul a fost curățat, iar finalizarea fine-tuning-ului rămâne ca next step.
 - Evoluția metricei de-a lungul epocilor (extrasă din `training_report.json`):
 
-Datasetul utilizat pentru această rulare este [Robot Finder – Roboflow Universe](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl), aproximativ ~3.1k imagini împărțite 70/15/15. + aprox. 100 poze adăugate din drive-ul Osace Hackathon.
+Datasetul utilizat pentru această rulare este [Robot Finder – Roboflow Universe](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl), aproximativ ~1.5k imagini împărțite 70/15/15. + aprox. 200 poze adăugate de noi.
 
 
 ## Cerințe îndeplinite
@@ -115,7 +115,7 @@ python prepare_dataset.py
 
 Dataset-ul folosit în experimentul curent provine din:  
 [https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl](https://universe.roboflow.com/robot-detecktor/robot-finder-anfwl)
-La acest dataset au fost adaugate și aproximativ 200 poze(human+robot) din drive-ul Osace Hackathon
+La acest dataset au fost adaugate și aproximativ 200 poze(human+robot) din drive-ul Osace Hackathon + poze făcute de noi cu roboți
 
 După adăugarea imaginilor, rulați din nou:
 ```powershell
@@ -373,5 +373,6 @@ Acest proiect este creat în scop educațional pentru OSACE Hackathon.
 Scanează QR-ul pentru a deschide interfața web:
 
 ![QR code pentru aplicație](assets/QrCode.jpg)
+
 
 Atenție! Pentru ca aplicația să funcționeze trebuie ca serverul să fie pornit. În această clipă serverul este laptop-ul lui Alex.
